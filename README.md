@@ -7,9 +7,9 @@ Computer Vision Group, Department of Computer Science, University of Bern
 
 [Project Page](https://wiqzard.github.io/composition-of-memory-experts/) | [Paper (PDF)](docs/paper.pdf)
 
-## Title Page
+## Title Figure
 
-![Title page](docs/assets/title-page.png)
+![Title figure](docs/assets/title-image.png)
 
 ## Quickstart
 

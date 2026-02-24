@@ -1,6 +1,15 @@
-# PhD Playground (Paper Release)
+# Composition of Memory Experts for Diffusion World Models
 
-This repository has been slimmed down to the training codepath used for the video-memory experiments in the paper.
+Published as a conference paper at **ICLR 2026**.
+
+**Authors:** Sebastian Stapf, Pablo Acuaviva Huertos, Aram Davtyan, Paolo Favaro  
+Computer Vision Group, Department of Computer Science, University of Bern
+
+[Project Page](https://wiqzard.github.io/composition-of-memory-experts/) | [Paper (PDF)](docs/paper.pdf)
+
+## Title Page
+
+![Title page](docs/assets/title-page.png)
 
 ## Quickstart
 
@@ -17,7 +26,7 @@ pip install -r requirements.txt
 python train.py experiment=m_video_maze
 ```
 
-## What is included
+## What Is Included
 
 The retained core training implementation is centered around:
 - `src/models/dfot_video.py`
@@ -29,10 +38,15 @@ The configuration set is reduced to the `m_video_maze` experiment and the config
 ## Data
 
 The default `m_video_maze` config expects Memory Maze data in:
-
 - `data/memory-maze-9x9` (or update `configs/data/memory_maze.yaml` accordingly).
 
-## Notes
+## Citation
 
-- The project uses Hydra for configuration composition.
-- The root entrypoint (`train.py`) forwards to `src/train.py`.
+```bibtex
+@inproceedings{stapf2026come,
+  title     = {Composition of Memory Experts for Diffusion World Models},
+  author    = {Stapf, Sebastian and Acuaviva Huertos, Pablo and Davtyan, Aram and Favaro, Paolo},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2026}
+}
+```

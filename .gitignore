@@ -36,6 +36,7 @@ lightning_logs
 huggingface
 huggingface/
 *.mp4
+!docs/assets/**/*.mp4
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

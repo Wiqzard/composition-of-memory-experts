@@ -1,0 +1,17 @@
+_target_: src.data.yoda.video_dataset.VideoDataModule
+data_path: ${paths.data_dir}
+input_size: 256
+crop_size: 256
+frames_per_sample: 16 #25
+num_steps: 20000 # number of steps in epoch * num_devices * num_batches
+
+skip_frames: 0
+random_time: True # sample random time within the video
+random_horizontal_flip: False
+random_time_reverse: False
+aug: False
+albumentations: True
+with_flows: False
+batch_size: 1
+num_workers: 15
+pin_memory: False

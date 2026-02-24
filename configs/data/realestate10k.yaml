@@ -1,0 +1,36 @@
+_target_: src.data.datamodule_factory.DataModuleFactory
+batch_size: 16
+num_workers: 16
+pin_memory: False 
+shuffle: True
+dataset_cls:
+  _target_: src.data.video.realestate10k.RealEstate10KAdvancedVideoDataset
+  _partial_: True
+
+  save_dir: /data/cvg/sebastian/realestate10k
+  latent_enable: false  #False  # Whether to use latents
+  latent_type: pre_sample  # Type of how latents are computed
+  latent_suffix: 1cd9pgpb
+  latent_downsampling_factor: [1, 1]  # [temporal, spatial]
+
+  filter_min_len: null
+  subdataset_size: null
+  external_cond_stack: true 
+  external_cond_dim: 16
+  n_frames: 2
+  max_frames: 8
+  context_length: 4
+  frame_skip: 10
+  resolution: 256
+
+  data_mean: [[[0.577]], [[0.517]], [[0.461]]]
+  data_std: [[[0.249]], [[0.249]], [[0.268]]]
+  observation_shape: [3, "${data.dataset_cls.resolution}", "${data.dataset_cls.resolution}"]
+
+  augmentation:
+    frame_skip_increase: 0 # increase frame skip by this amount each subepoch
+    horizontal_flip_prob: 0.0 # probability of horizontally flipping the video
+    reverse_prob: 0 # probability of reversing the video
+    back_and_forth_prob: 0 # probability of playing the video back and forth
+
+

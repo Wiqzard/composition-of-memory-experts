@@ -1,0 +1,219 @@
+# @package _global_
+
+defaults:
+  - override /data: memory_maze
+  - override /model: mea_video
+  - override /callbacks: default
+  - override /trainer: ddp
+  - override /logger: wandb
+  - override /paths: default
+  #- override /debug: profiler #advanced #overfit
+
+tags: ["ddpm", "debug", "minecraft"]
+seed: 42
+train: True #False #True
+validate: True #False
+test: False
+ckpt_path:
+
+trainer:
+  strategy: auto
+  devices: 1
+  limit_val_batches: 64 #16 #64 #128 #16 #16 #32 #64 #32 #64 ###32
+  val_check_interval: 1 #4000 # #2000 #1 #2000 #1000
+  log_every_n_steps: 1
+  num_sanity_val_steps: 0
+  precision: #16-mixed #16-true
+
+data:
+  batch_size: 1 #16 #16 #32 #2 #32 #16
+  overwrite_split: #validation
+  dataset_cls:
+    absolute_action: True
+    n_frames: 171 #154 161 168#492 #192 #192 #92 #192 #492 #499 #350
+    max_frames: 10
+
+model:
+  #ckpt_path: #/home/ss24m050/Documents/phd_playground/data/ckpts/dmlab.ckpt
+  #ckpt_path: logs/train/runs/2025-05-17_06-50-44/checkpoints/last.ckpt
+  ckpt_path: logs/train/runs/base_b_abs_n_context=3/checkpoints/last.ckpt
+  compile: #true_without_ddp_optimizer # null
+
+  # Metrics Configuration
+  metrics: [mse, psnr, ssim, fid, fvd, lpips] #[fvd, is, fid, lpips, mse, psnr, ssim, vbench]
+  exclude_context: true
+  # Checkpoint
+  strict_load: False #True #False
+  reset_optimizer: False
+
+  log_max_num_videos: 5000
+  log_denoising: False ####################################
+
+  context_frames: 150 #150 #150 #50 #150 #450 # number of total context frames
+  sliding_context_len: 3 #1 # the amount context frames within attention window
+  chunk_size: 10 #  # limits the horizon if use_causal_mask is true
+  use_causal_mask: False # for autoregressive prediction
+  sampling_timesteps: 50
+
+  fixed_context:
+    enabled: false
+    indices: null
+    dropout: 0.3
+
+  variable_context:
+    enabled: false
+    prob: 0.5
+    dropout: 0.3
+
+  uniform_future: true
+  noise_level: random_independent
+  scheduling_matrix: full_sequence
+
+  # Tasks
+  tasks: [prediction]
+
+  adapter:
+    enabled: true
+    train_adapter: true #true
+    generate_unbatched: true
+    variant: lora #adapter # full, lora
+    lora_target_modules:  ["attn_out", "fused_attn_mlp_proj", "mlp_out.2"]
+    n_ula: 0
+    spurious_retrieval: false
+    lora_r: 128 #32 #256 #8 #j256 #8 #32 #64 #256 #8 #32 #64 #128 #16 #32 #64 #128 #64 #32
+    lora_alpha: 128 #32 #256 #8 #256 #8 #32 #64 #256 #8 #32 #64 #128 #16 #32 #64 #128 #64 #32
+    num_memorization_steps: 50 #500 #1500 #1500 #5000 # 500 #1500 #5000 #5000 #200 #250 #50 #200
+    only_memorize_context: true #true
+    dropout: #0.7
+    memorization_strategy: random #sequential_last #random
+    memory_strength: 2 #1 #2.0 #1 #2.5 #2.5 #2.0
+    adapter_lr: 0.0001
+    ckpt_path: # only needed for adapter and if not trained with the adapter
+    #adapter_strength: 2
+    adapter_model:
+      null
+      #_target_: adapter.MemoryAdapter
+      #batch_size: 1 #${model.batch_size}
+      #x_shape: [4, 32, 32] #${data.dataset_cls.observation_shape}
+      #max_tokens: ${model.chunk_size}
+      ##external_cond_dim: ${model.external_cond_dim}
+      #hidden_size: 384 #576 #384 #768 #384 #192
+      #patch_size: 2
+      #variant: full
+      #pos_emb_type: rope_3d #learned_1d #sinusoidal_factorized
+      #depth: 12
+      #num_heads: 6 #12
+      #mlp_ratio: 4
+      #use_gradient_checkpointing: False
+      #use_fourier_noise_embedding: True
+      #external_cond_dropout: 0.00
+
+  diffusion_model:
+    _partial_: true
+    _target_: src.models.components.diffusion.continuous_diffusion_v2.ContinuousDiffusion #ContinuousDiffusion  # DiscreteDiffusion
+    model:
+      _partial_: true
+      #_target_: src.models.components.backbones.unet.unet3d.Unet3D
+      #network_size: 48
+      #num_res_blocks: 3
+      #resnet_block_groups: 8
+      #dim_mults: [1, 2, 4, 8]
+      #attn_resolutions: [8, 16, 32, 64]
+      #attn_dim_head: 32
+      #attn_heads: 4
+      #use_linear_attn: True
+      #use_init_temporal_attn: True
+      #init_kernel_size: 7
+      #dropout: 0.0
+      #use_causal_mask: ${model.use_causal_mask}
+      #external_cond_dim: 5
+      #max_tokens: ${model.chunk_size}
+
+      #channels: [128, 256, 512, 1024]
+      #block_types: ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+      #block_dropouts: [0.0, 0.0, 0.1, 0.1]
+      #num_updown_blocks: [3, 3, 6]
+      #use_checkpointing: [false, false, false, false]
+
+      _target_: src.models.components.backbones.uvit.UViT3D
+      channels: [128, 128, 256, 256] #[128, 256, 512, 1024]
+      block_types:
+        ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+      block_dropouts: [0.0, 0.0, 0.1, 0.1]
+      num_updown_blocks: [3, 3, 3] #[3, 3, 3]
+      use_checkpointing: [false, false, false, false]
+      emb_dim: 1024
+      patch_size: 2
+      num_mid_blocks: 16 #8 #16 #12 #20 #16
+      num_heads: 4
+      pos_emb_type: rope
+      external_cond_dropout: 0.0 # probability of dropping a camera pose of each video during training
+      max_tokens: ${model.chunk_size}
+      use_fourier_noise_embedding: true #false #true
+      use_causal_mask: false #true
+    # ----------------- DISCRETE ----------------- #
+    #    timesteps: 1000 #${model.sampling_timesteps}
+    #sampling_timesteps: ${model.sampling_timesteps}
+    #beta_schedule: cosine #_simple_diffusion
+    ##schedule_fn_kwargs:
+    ##shifted: 0.125
+    #objective: pred_noise #pred_v
+    #loss_weighting:
+    #strategy: sigmoid #fused_min_snr #sigmoid #used_min_snr #sigmoid #sigmoid
+    ##snr_clip: 5
+    ##cum_snr_decay: 0.9
+    #sigmoid_bias: -1
+    #clip_noise: ${model.clip_noise}
+    #use_causal_mask: False
+    # ----------------- CONTINUOUS----------------- #
+    timesteps: 1000
+    use_causal_mask: ${model.use_causal_mask}
+    clip_noise: ${model.clip_noise}
+    objective: pred_v
+    beta_schedule: cosine_simple_diffusion
+    loss_weighting:
+      strategy: sigmoid #fused_min_snr #sigmoid
+      sigmoid_bias: -1
+    training_schedule: cosine
+    training_schedule_shift: 0.125
+    schedule_fn_kwargs:
+      shifted: 0.125
+    sampling_timesteps: ${model.sampling_timesteps}
+    precond_scale: 0.125 # true
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.0001
+    weight_decay: 0.001
+
+  lr_scheduler:
+    _target_: transformers.get_scheduler
+    _partial_: true
+    name: constant_with_warmup
+    num_warmup_steps: 1000
+    num_training_steps: 500000
+
+callbacks:
+  ema:
+    enabled: false
+    decay: 0.9999
+    validate_original_weights: true
+
+  early_stopping:
+    monitor: "prediction/VideoMetricType.FID"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    save_top_k: 3
+    monitor: "prediction/VideoMetricType.FID"
+    mode: "min"
+
+logger:
+  wandb:
+    tags: ${tags}
+    project: memory_adaptation_mmaze
+    #id: vasew1je
+  #aim:
+  #  experiment: "ddpm_memory_maze"

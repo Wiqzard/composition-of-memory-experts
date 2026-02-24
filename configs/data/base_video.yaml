@@ -1,0 +1,8 @@
+
+
+
+save_dir: ???
+# Mean & Std to be used for normalizing inputs to the model
+data_mean: "data/${dataset.name}/data_mean.npy"
+data_std: "data/${dataset.name}/data_std.npy"
+# Latent Configuration

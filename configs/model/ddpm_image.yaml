@@ -1,0 +1,28 @@
+_target_: src.models.ddpm_meta.DiffusionModelTrainer
+
+num_inference_steps: 10
+num_gen_steps: 1 
+
+model:
+  _target_: src.models.components.dit.DiT # _S_4
+  in_channels: 3 #8
+  out_channels: 3 #4
+  input_size: 64 #16 #64
+  num_classes: 1
+  depth: 12 #12
+  hidden_size: 192 #384 #192 #384
+  num_heads: 6
+  patch_size: 4
+
+
+scheduler:
+  _target_: diffusers.DDPMScheduler
+  num_train_timesteps: 1000
+  beta_schedule: linear
+  prediction_type: v_prediction 
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+

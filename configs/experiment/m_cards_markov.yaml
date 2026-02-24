@@ -1,0 +1,303 @@
+# @package _global_
+
+defaults:
+  - override /data: cards #minecraft_marsh #memory_test
+  - override /model: ddim_video_mem
+  - override /callbacks: default
+  #- override /trainer: gpu
+  - override /trainer: ddp
+  - override /logger: wandb
+  - override /paths: default
+  #- override /debug: profiler #advanced #overfit
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["ddpm", "debug", "minecraft"]
+
+seed: 42
+test: False
+
+trainer:
+  strategy: auto #ddp #auto #ddp_find_unused_parameters_true
+  devices: 8
+  limit_val_batches: 16 #8 #16
+  min_epochs: 10
+  #max_epochs: 1000
+  gradient_clip_val: 1
+  val_check_interval: 2000 #10 #1000 #000 #00 #1000 #1000 #900
+  check_val_every_n_epoch: #5
+  log_every_n_steps: 1
+  num_sanity_val_steps: 0
+  precision: #16-mixed #16-true #bf16 #16-mixed # 16-true #bf16 #bf16-mixed
+  max_epochs: 1
+  deterministic: False
+  #limit_train_batches: 400
+  #overfit_batches: 1
+  #profiler: "advanced"
+
+ckpt_path: #/home/ss24m050/Documents/phd_playground/data/2025-04-10_23-01-18/checkpoints/last.ckpt # ##/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-04-16_20-59-15/checkpoints/last.ckpt #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-03-31_22-22-42/checkpoints/last.ckpt #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-03-31_11-24-47/checkpoints/last.ckpt # logs/train/runs/2025-02-21_22-04-15/checkpoints/last.ckpt  # null
+
+# all covered start at 42
+# 110 for all covered and all sequences given
+data:
+  batch_size: 2 #16 #2 #16 #32 #8 #
+  num_workers: 16
+  overwrite_split: #validation #!!!!!#!!!!!#!!!!!#!!!!!#!!!!!#!!!!!#!!!!!
+  dataset_cls:
+    absolute_position: True
+    external_cond_dim: 3
+    n_frames: 163 #173 #105 #249 #1809 #999 #1000 #0 #82 #37 #73 #70 #95 #77 #55 #95 #250 #250 #85 #19 # #20 #113 # n_context + h(chunk_size - 1) 74 #55 #10 #68 #10 #9 #10 #104 #55 #55 #75 #145 #64 #54 #54 #104 #54 #64 #19 #10 #120 # total frames in prediction
+    num_total_frames: 250 #250 #105
+    #num_total_frames: 20000 11 #105 #250 #1000
+    max_frames: 10 #10 #10 # total frames in training
+    resolution: 48 #64 #52 #20 #48
+    #save_dir: /data/cvg/sebastian/memory-tiles-4x4-zigzag
+    save_dir: /data/cvg/sebastian/memory-tiles-4x4-start-covered #/data/cvg/sebastian/memory-tiles-4x4-zigzag
+    observation_shape:
+      [3, "${data.dataset_cls.resolution}", "${data.dataset_cls.resolution}"]
+
+    #observation_shape: [4, 32, 32]
+
+model:
+  #ckpt_path: /home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-12_11-18-33/checkpoints/last.ckpt #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-12_10-24-08/checkpoints/last.ckpt #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-12_08-14-16/checkpoints/last.ckpt
+  #ckpt_path: #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-12_15-23-39/checkpoints/last.ckpt
+  #ckpt_path: /home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-12_21-36-03/checkpoints/last.ckpt # /phd_playground/logs/train/runs/2025-05-12_21-36-03/checkpoints/last.ckpt
+  #ckpt_path: /home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-13_18-11-25/checkpoints/last.ckpt ##/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-05-13_10-20-59/checkpoints/last.ckpt
+  ckpt_path: /home/ss24m050/Documents/phd_playground/logs/train/runs/cards_n_context=3/checkpoints/last.ckpt
+  lora_finetune: False
+  compile: false #true #true_without_ddp_optimizer #
+  batch_size: ${data.batch_size}
+
+  data_mean: ${data.dataset_cls.data_mean}
+  data_std: ${data.dataset_cls.data_std}
+
+  # VAE Configuration
+  is_latent_diffusion: False
+  is_latent_online: False
+  latent_downsampling_factor: ${data.dataset_cls.latent_downsampling_factor}
+  latent_num_channels: 4
+  vae_pretrained_path: # data/ckpts/ImageVAE_MCRAFT.ckpt
+  vae_use_fp16: True
+  vae_batch_size: 1
+  vae_time_chunk_size: 20
+  vae_pretrained_kwargs: {}
+
+  # Metrics Configuration
+  metrics: [mse, psnr, ssim, fid, lpips] #[fvd, is, fid, lpips, mse, psnr, ssim, vbench]
+  metrics_batch_size: 8
+  exclude_context: true
+  n_metrics_frames:
+
+  # Checkpoint
+  strict_load: False
+  reset_optimizer: False
+
+  # Logging Configuration
+  log_grad_norm_freq: 100 #100 #${#trainer.log_every_n_steps}
+  log_deterministic: False
+  log_denoising: True
+  log_sanity_generation: True #True #False
+  log_max_num_videos: 32 #128 #64 #16 #32
+  log_fps: 6
+
+  # General Configuration
+  x_shape: ${data.dataset_cls.observation_shape}
+  n_frames: ${data.dataset_cls.n_frames} # Number of frames to be used for generating videos
+  max_frames: ${data.dataset_cls.max_frames} # ... during training
+  context_frames: 110 #42 #42 #200 #900 #10 #25 #50 #30 #50 #1 #50 #50 #10 #120 #50  # number of total context frames
+  sliding_context_len: 3 # 1   # the amount context frames within attention window
+  chunk_size: 10 #10 #50  # limits the horizon if use_causal_mask is true
+  # assert chunk_size <= max_frames - sliding_context_len
+  use_causal_mask: False #True # for autoregressive prediction
+
+  # horizon = max_frames - sliding_context_len
+
+  adapter:
+    enabled: true #false #true #true #false #false #true
+    train_adapter: true #true #false #true
+    generate_unbatched: true
+    variant: full #lora #adapter # full, lora, adapter, classifier
+    n_ula: 0
+    spurious_retrieval: false
+    ####
+    lora_r: 16 #64 #16 #8 #32 #64 #32 #64 #128 #64 #128 #64 #32 #16
+    lora_alpha: 8 #32 #8 #32 #64 #32 #64 #128 #64 #128 #64 #32 #16
+    num_memorization_steps: 500 #2500 #50 #200 #500 #1200 #800 #2000 #1000 #800 #400 #200 #100 #50 #20
+    ####
+    only_memorize_context: true
+    dropout: #0.7
+    memorization_strategy: random #sequential_last #random
+    ####
+    memory_strength: 2.5 #1 #2.5 #2.5 #2.0
+    adapter_lr: 0.0001
+    ckpt_path: # only needed for adapter and if not trained with the adapter
+    #adapter_strength: 2
+    adapter_model:
+      _target_: adapter.MemoryAdapter
+      batch_size: 1 #${model.batch_size}
+      x_shape: [4, 32, 32] #${data.dataset_cls.observation_shape}
+      max_tokens: ${model.chunk_size}
+      hidden_size: 384 #576 #384 #768 #384 #192
+      patch_size: 2
+      variant: full
+      pos_emb_type: rope_3d #learned_1d #sinusoidal_factorized
+      depth: 12
+      num_heads: 6 #12
+      mlp_ratio: 4
+      use_gradient_checkpointing: False
+      use_fourier_noise_embedding: True
+      external_cond_dropout: 0.00
+
+  fixed_context:
+    enabled: false
+    indices: null
+    dropout: 0.3
+
+  variable_context:
+    enabled: false
+    prob: 0.5
+    dropout: 0.3
+
+  sampling_timesteps: 50 #50 # 1000 #100 #50 #25
+  cat_context_in_c_dim: False
+  generate_in_noise_dim: False
+
+  uniform_future: true
+  noise_level: random_independent
+  scheduling_matrix: full_sequence
+  reconstruction_guidance: 0.0
+  cfg_scale: 1.5
+  clip_noise: 20
+
+  # put these into data maybe?
+  external_cond_processing: none #mask_first
+  external_cond_dim: ${data.dataset_cls.external_cond_dim}
+  external_cond_stack: True
+  frame_skip: ${data.dataset_cls.frame_skip}
+
+  # Tasks
+  tasks: [prediction] #, interpolation]
+  diffusion_model:
+    _partial_: true
+    _target_: src.models.components.diffusion.continuous_diffusion_v2.ContinuousDiffusion #ContinuousDiffusion  # DiscreteDiffusion
+    model:
+      _partial_: true
+      #_target_: src.models.components.backbones.unet.unet3d.Unet3D
+      #network_size: 48
+      #num_res_blocks: 3
+      #resnet_block_groups: 8
+      #dim_mults: [1, 2, 4, 8]
+      #attn_resolutions: [8, 16, 32, 64]
+      #attn_dim_head: 32
+      #attn_heads: 4
+      #use_linear_attn: True
+      #use_init_temporal_attn: True
+      #init_kernel_size: 7
+      #dropout: 0.0
+      #use_causal_mask: ${model.use_causal_mask}
+      #external_cond_dim: 5
+      #max_tokens: ${model.chunk_size}
+
+      #channels: [128, 256, 512, 1024]
+      #block_types: ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+      #block_dropouts: [0.0, 0.0, 0.1, 0.1]
+      #num_updown_blocks: [3, 3, 6]
+      #use_checkpointing: [false, false, false, false]
+
+      _target_: src.models.components.backbones.uvit.UViT3D
+      channels: [128, 128, 256, 256] #[128, 256, 512, 1024]
+      block_types:
+        ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+      block_dropouts: [0.0, 0.0, 0.1, 0.1]
+      num_updown_blocks: [3, 3, 3] #[3, 3, 3]
+      use_checkpointing: [false, false, false, false]
+      emb_dim: 1024
+      patch_size: 2
+      num_mid_blocks: 16 #12 #20 #16
+      num_heads: 4
+      pos_emb_type: rope
+      external_cond_dropout: 0.0 # probability of dropping a camera pose of each video during training
+      use_fourier_noise_embedding: true #false #true
+      use_causal_mask: false #true
+    # ----------------- DISCRETE ----------------- #
+    #    timesteps: 1000 #${model.sampling_timesteps}
+    #sampling_timesteps: ${model.sampling_timesteps}
+    #beta_schedule: cosine #_simple_diffusion
+    ##schedule_fn_kwargs:
+    ##shifted: 0.125
+    #objective: pred_noise #pred_v
+    #loss_weighting:
+    #strategy: sigmoid #fused_min_snr #sigmoid #used_min_snr #sigmoid #sigmoid
+    ##snr_clip: 5
+    ##cum_snr_decay: 0.9
+    #sigmoid_bias: -1
+    #clip_noise: ${model.clip_noise}
+    #use_causal_mask: False
+    # ----------------- CONTINUOUS----------------- #
+    timesteps: 1000
+    use_causal_mask: ${model.use_causal_mask}
+    clip_noise: ${model.clip_noise}
+    objective: pred_v
+    beta_schedule: cosine_simple_diffusion
+    loss_weighting:
+      strategy: sigmoid #fused_min_snr #sigmoid
+      sigmoid_bias: -1
+    training_schedule: cosine
+    training_schedule_shift: 0.125
+    schedule_fn_kwargs:
+      shifted: 0.125
+    sampling_timesteps: ${model.sampling_timesteps}
+    precond_scale: 0.125 # true
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.0001
+    weight_decay: 0.001
+
+  lr_scheduler:
+    _target_: transformers.get_scheduler #get_constant_schedule_with_warmup
+    _partial_: true
+    name: constant_with_warmup
+    num_warmup_steps: 1000 #1000
+    num_training_steps: 500000
+    #_target_: torch.optim.lr_scheduler.LinearLR
+    #_partial_: true
+    #start_factor: 1
+    #end_factor: 0.1
+    #total_iters: ${trainer.max_epochs}
+
+callbacks:
+  ema:
+    enabled: false #true
+    decay: 0.9999
+    validate_original_weights: true #False #True
+
+  early_stopping:
+    #monitor: "val/loss"
+    monitor: "prediction/VideoMetricType.FID"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    #monitor: "train/outer_loss"
+    #monitor: "train/loss"
+    #monitor: "val/loss"
+    save_top_k: 3
+    monitor: "prediction/VideoMetricType.FID"
+    mode: "min"
+
+  learning_rate_monitor:
+    logging_interval: "step"
+    log_momentum: true
+    log_weight_decay: true
+
+logger:
+  wandb:
+    project: "cards"
+    tags: ${tags}
+    group: "ddim cards"
+    #id: vasew1je
+  #aim:
+  #  experiment: "ddpm_memory_maze"

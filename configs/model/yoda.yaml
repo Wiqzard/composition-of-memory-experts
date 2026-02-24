@@ -1,0 +1,105 @@
+_target_: src.models.flow_module.YodaLitModule
+
+num_val_frames: 15
+sigma_min: 0.1
+test_nfe: 100
+plot: False
+path: ${paths.log_dir}
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.0001
+  weight_decay: 1e-5
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  _partial_: true
+  step_size: 1
+  gamma: 1
+
+net:
+  _target_: src.models.components.velocity_net.VelocityNet
+  sigma: 0.1
+  skip_prob: 0.5
+
+  # maybe put this in data config
+  num_ref_frames: 4 # the total input frames are num_ref_frames + num_cond_frames + 1
+  num_cond_frames: 1
+  hist_window_size: 10 # sample conditioning frames window before reference frames
+
+  autoencoder:
+    _target_: src.models.components.velocity_net.VideoAutoencoder
+    type: svd
+    hf_token: ${oc.env:HF_TOKEN,null}
+    model_id: stabilityai/stable-video-diffusion-img2vid-xt-1-1
+    ckpt_path: # path to the checkpoint #need output z to be 3x16x16
+
+  flow_network:
+    _target_: src.models.components.yoda.flow_network.FlowNetwork
+    scale: 1.0
+
+  sparsification_network:
+    _target_: src.models.components.yoda.sparsification_network.SparsificationNetwork
+    num_samples: 5
+    tau: 100
+    threshold: 0.0001
+
+  flow_representation_network:
+    _target_: src.models.components.yoda.flow_representation_network.FlowRepresentationNetwork
+    in_channels: 3 #${data.channels}
+    out_channels: 256 #${vector_field_regressor.cross_attention_dim}
+    out_res: [8, 8] #32, 32] #${vector_field_regressor.sample_size}
+    tile_size: [32, 32] # image size / tile_size = out_res !
+    depth: 4
+
+  vector_field_regressor:
+    _target_: src.models.components.yoda.vector_field_regressor.VectorFieldRegressor
+    sample_size: [32, 32]
+    in_channels: 4
+    out_channels: 4
+    down_block_types:
+      [
+        "CrossAttnDownBlockSpatioTemporal",
+        "CrossAttnDownBlockSpatioTemporal",
+        "CrossAttnDownBlockSpatioTemporal",
+        "DownBlockSpatioTemporal",
+      ]
+    up_block_types:
+      [
+        "UpBlockSpatioTemporal",
+        "CrossAttnUpBlockSpatioTemporal",
+        "CrossAttnUpBlockSpatioTemporal",
+        "CrossAttnUpBlockSpatioTemporal",
+      ]
+    block_out_channels: [128, 256, 512, 512] # [32, 32, 32, 32]
+    addition_time_embed_dim: 128
+    projection_class_embeddings_input_dim: 768 # 1280 # input_frames * added_time_embed_dim
+    layers_per_block: 2
+    cross_attention_dim: 256
+    transformer_layers_per_block: 1
+    num_attention_heads: [2, 4, 4, 8]
+    num_frames_in_block: [6, 4, 4, 4, 2, 2, 1, 1] #[10, 8, 8, 6, 4, 4, 2, 1]
+    skip_action: True
+
+augmentations:
+  _target_: src.models.components.augmentation.AugmentationModule
+  cnf_estimator: null
+  l1_reg: 0
+  l2_reg: 0 #this just regularizes the flow field with l1 norm to 0
+  squared_l2_reg: 0.
+  jacobian_frobenius_reg: 0.
+  jacobian_diag_frobenius_reg: 0
+  jacobian_off_diag_frobenius_reg: 0.
+
+partial_solver:
+  _target_: src.models.components.solver.FlowSolver
+  _partial_: true
+  ode_solver: "euler"
+  atol: 1e-5
+  rtol: 1e-5
+
+ot_sampler: null #exact # sinkhorn, null
+
+# write config check to make sure that the values here are correct for the dataset
+# also we want here other inputs like fps, etc. maybe pass the whole dataset

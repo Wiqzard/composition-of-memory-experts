@@ -1,0 +1,8 @@
+_target_: src.models.components.autoencoder.vae.image_vae.preprocessor.ImageVAEPreprocessor
+pretrained_path: data/ckpts/ImageVAE_MCRAFT.ckpt 
+pretrained_kwargs: {}
+precision: 16-true
+#  latent_type: ${data.latent.type}
+max_encode_length: 700 # number of frames that can be passed through the encoder at once
+max_video_length: 300
+every_n_batch: 500

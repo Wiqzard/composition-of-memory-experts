@@ -1,0 +1,19 @@
+
+_target_:  src.models.components.backbones.uvit.UViT3DPose 
+channels: [128, 256, 576, 1152] #[128, 256, 512, 1024]
+emb_dim: 1024
+patch_size: 2
+block_types: ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+block_dropouts: [0.0, 0.0, 0.1, 0.1]
+num_updown_blocks: [3, 3, 6] #[3, 3, 3]
+num_mid_blocks: 20 #16
+num_heads: 9
+pos_emb_type: rope
+use_checkpointing: [false, false, false, false]
+max_tokens: 10
+external_cond_dim: 180
+external_cond_dropout: 0.0 # probability of dropping a camera pose of each video during training 
+x_shape: [3, 32, 32] # input shape of the model
+use_fourier_noise_embedding: true #false #true
+use_causal_mask: true
+

@@ -1,0 +1,89 @@
+_target_: src.models.diffusion_module.SVDLightningModule
+
+autoencoder: 
+  _target_: src.models.components.svd.autoencoder.AutoencoderKLTemporalDecoderWrapper
+  pretrained: False   # if pretrained True, ignore the architecture below
+  pretrained_model_name_or_path: stabilityai/stable-video-diffusion-img2vid
+  subfolder: vae 
+  variant: fp16 # link to precision
+  block_out_channels: [32, 64, 128, 128]
+  down_block_types: [
+      "DownEncoderBlock2D",
+      "DownEncoderBlock2D",
+      "DownEncoderBlock2D",
+      "DownEncoderBlock2D",
+  ]
+  force_upcast: True
+  in_channels: 3
+  latent_channels: 4
+  layers_per_block: 2
+  out_channels: 3
+  sample_size: 768
+  scaling_factor: 0.18215
+
+unet:
+  _target_: src.models.components.svd.unet_condition.UNetSpatioTemporalConditionModelWrapper
+  pretrained: False  # if pretrained True, ignore the architecture below
+  pretrained_model_name_or_path: stabilityai/stable-video-diffusion-img2vid
+  subfolder: unet
+  variant: fp16 # link to precision
+  addition_time_embed_dim: 256
+  block_out_channels: [32, 32, 64, 64]
+  cross_attention_dim: 1024
+  down_block_types: [
+      "CrossAttnDownBlockSpatioTemporal",
+      "CrossAttnDownBlockSpatioTemporal",
+      "CrossAttnDownBlockSpatioTemporal",
+      "DownBlockSpatioTemporal",
+  ]
+  in_channels: 8
+  layers_per_block: 2
+  num_attention_heads: [4, 4, 8, 8]
+  num_frames: 25
+  out_channels: 4
+  projection_class_embeddings_input_dim: 768
+  sample_size: 96
+  transformer_layers_per_block: 1
+  up_block_types: [
+      "UpBlockSpatioTemporal",
+      "CrossAttnUpBlockSpatioTemporal",
+      "CrossAttnUpBlockSpatioTemporal",
+      "CrossAttnUpBlockSpatioTemporal",
+  ]
+
+
+#model:
+#  _target_: src.models.components.UNetSpatioTemporalConditionModel 
+#   addition_time_embed_dim: 256
+#  block_out_channels: [
+#    320,
+#    640,
+#    1280,
+#    1280
+#  ]
+#  cross_attention_dim: 1024
+#  down_block_types: [
+#    "CrossAttnDownBlockSpatioTemporal",
+#    "CrossAttnDownBlockSpatioTemporal",
+#    "CrossAttnDownBlockSpatioTemporal",
+#    "DownBlockSpatioTemporal"
+#  ]
+#  in_channels: 8
+#  layers_per_block: 2
+#  num_attention_heads: [
+#    5,
+#    10,
+#    20,
+#    20
+#  ]
+#  num_frames: 25
+#  out_channels: 4
+#  projection_class_embeddings_input_dim: 768
+#  sample_size: 96
+#  transformer_layers_per_block: 1
+#  up_block_types: [
+#    "UpBlockSpatioTemporal",
+#    "CrossAttnUpBlockSpatioTemporal",
+#    "CrossAttnUpBlockSpatioTemporal",
+#    "CrossAttnUpBlockSpatioTemporal"
+#  ]

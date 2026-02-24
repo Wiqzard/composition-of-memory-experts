@@ -1,0 +1,22 @@
+
+#_target_:  src.components.backbones.uvit.u_vit3d. 
+#name: 
+#channels: [64, 128, 256, 512]
+# num_res_blocks
+#resnet_block_groups: 8
+#attn_resolutions: [8, 16, 32, 64]
+#attn_heads: 4
+
+
+#emb_channels: 1024
+#block_types: ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+#block_dropouts: [0.0, 0.0, 0.1, 0.1]
+#num_updown_blocks: [3, 3, 3]
+#num_mid_blocks: 16
+
+#num_heads: 4
+#pos_emb_type: rope
+#use_checkpointing: [false, false, false, false]
+#conditioning:
+#  dim: null # this will be overwritten at dfot_video_3d.py
+#external_cond_dropout: 0.1 # probability of dropping a camera pose of each video during training 

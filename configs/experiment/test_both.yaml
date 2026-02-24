@@ -1,0 +1,280 @@
+# @package _global_
+
+defaults:
+  - override /data: memory_maze
+  - override /model: mea_video
+  - override /callbacks: default
+  - override /trainer: ddp
+  - override /logger: wandb
+  - override /paths: default
+  #- override /debug: profiler #advanced #overfit
+
+task_name: memory_maze_resub
+tags: ["stm"]
+seed: 42
+train: True #False #True
+validate: True #False
+test: False
+ckpt_path:
+
+trainer:
+  strategy: auto
+  devices: 8
+  limit_val_batches: 64 #16 #64 #128 #16 #16 #32 #64 #32 #64 ###32
+  val_check_interval: 1 #0 #1 #1 #4000 # #2000 #1 #2000 #1000
+  log_every_n_steps: 1
+  num_sanity_val_steps: 0
+  precision: #16-mixed #16-true
+
+data:
+  batch_size: 1 #4 #16 #32 #32 #16 #32 #16 #16 #32 #2 #32 #16
+  overwrite_split: #validation
+  dataset_cls:
+    absolute_action: false #True
+    n_frames: 217 #20 #57 #20 #371 #17 #171 #41 #171 #154 161 168#492 #192 #192 #92 #192 #492 #499 #350
+    #n_frames: 171 #41 #171 #154 161 168#492 #192 #192 #92 #192 #492 #499 #350
+    max_frames: 20
+    resolution: 64
+    latent_enable: True #False  # Whether to use latents
+    latent_type: pre_sample # Type of how latents are computed
+    latent_downsampling_factor: [1, 4] # [temporal, spatial]
+    latent_suffix: 1cd9pgpb #_debug
+    data_mean: [[[-6.2]], [[0.3]], [[3.3]], [[-2.2]]]
+    data_std: [[[8.2]], [[2.2]], [[3.5]], [[5.8]]]
+    both_actions: false #true #false #True #True #False
+
+model:
+  #ckpt_path: #/home/ss24m050/Documents/phd_playground/data/ckpts/dmlab.ckpt
+  #ckpt_path: logs/train/runs/2025-05-17_06-50-44/checkpoints/last.ckpt
+  #ckpt_path: data/resub/dit_20_(1-10)_ru_cont/checkpoints/last.ckpt #data/ckpts/memory_maze_resub_dit_20_(1-10)_ru/checkpoints/last.ckpt ##logs/train/runs/base_b_abs_n_context=3/checkpoints/last.ckpt
+  ckpt_path: data/resubmission/vanilla_patch_size=2_rel/checkpoints/last.ckpt
+  compile: #true_without_ddp_optimizer # null
+  clip_noise: 999999999
+
+  is_latent_diffusion: True
+  latent_num_channels: 4
+  vae_pretrained_path: data/ckpts/vae_memory_maze_9x9_[1,4].ckpt # data/ckpts/ImageVAE_MCRAFT.ckpt
+  vae_use_fp16: True
+  vae_batch_size: 1
+  vae_time_chunk_size: 20
+
+  # Metrics Configuration
+  metrics: [mse, psnr, ssim, fid, fvd, lpips] #[fvd, is, fid, lpips, mse, psnr, ssim, vbench]
+  exclude_context: true
+  # Checkpoint
+  strict_load: True #False
+  reset_optimizer: False
+
+  log_max_num_videos: 5000
+  log_denoising: False ####################################
+
+  context_frames: 200 #40 #150 #150 #150 #50 #150 #450 # number of total context frames
+  sliding_context_len: 3 #1 # the amount context frames within attention window
+  chunk_size: 20 #  # limits the horizon if use_causal_mask is true
+  use_causal_mask: False # for autoregressive prediction
+  sampling_timesteps: 50
+
+  fixed_context:
+    enabled: true #false
+    indices: null
+    dropout: 0.1
+
+  variable_context:
+    enabled: false
+    prob: 0.5
+    dropout: 0.3
+
+  causal_context:
+    min: 0
+    max: 10
+    enabled: False #false
+    indices: null
+    dropout: 0.0 #0.3
+
+  uniform_future: true
+  noise_level: random_uniform #independent
+  scheduling_matrix: full_sequence
+
+  use_gt_context_only: False #True #False
+
+  # Tasks
+  tasks: [prediction]
+
+  adapter:
+    enabled: true #true #true #false #true
+    train_adapter: true #true #false #true #false #true #true #false #true #true #false #true #false #true #false #true #false #true #true
+    generate_unbatched: true
+    optimizer: adamw
+    variant: custom #mem_kv #custom #lora #custom #lora #adapter # full, lora
+    #variant: custom_adapter_lora #custom #mem_kv #custom #lora #custom #lora #adapter # full, lora
+    #lora_target_modules: ["q_proj", "k_proj", "v_proj", "proj", "mlp.fc1", "mlp.fc2"]  # ["attn_out", "fused_attn_mlp_proj", "mlp_out.2"]
+    ######
+    lora_target_modules: ["qkv", "proj", "mlp.fc1", "mlp.fc2"] # ["attn_out", "fused_attn_mlp_proj", "mlp_out.2"]
+    n_ula: 0
+    spurious_retrieval: false
+    lora_r: 64 #32 #128 #32 #256 #8 #j256 #8 #32 #64 #256 #8 #32 #64 #128 #16 #32 #64 #128 #64 #32
+    lora_alpha: 64 #32 #128 #32 #256 #8 #256 #8 #32 #64 #256 #8 #32 #64 #128 #16 #32 #64 #128 #64 #32
+    combine: false
+    num_memorization_steps: 500 #1 #500 #500 #00 #300 #500 #1500 #1500 #5000 # 500 #1500 #5000 #5000 #200 #250 #50 #200
+    only_memorize_context: true #false #true #true
+    dropout: #0.7
+    memorization_strategy: random #sequential_last #random
+    memory_strength: 1.25 #5 #1 #1 #2.0 #1 #2.5 #2.5 #2.0
+    adapter_lr: 0.0001
+    local_lr: 0.01
+
+    # ext p2 abs
+    #ckpt_path: data/resubmission/vanilla_patch_size=2_abs_cont/checkpoints/last.ckpt
+    # ext p4 abs
+    ckpt_path: data/resubmission/external_ltm_patch_size=4_abs/checkpoints/last.ckpt #data/resubmission/vanilla_patch_size=2_abs_cont/checkpoints/last.ckpt # # only needed for adapter and if not trained with the adapter
+    stm_only: false #true #false #True #False # True #False #True #False #True #false #true
+    ltm_model:
+    stm_model:
+      ######
+      enabled: true #false ##true # true #false #true #false #true
+      #ckpt_path: logs/train_video_memory_maze/['sparse']/runs/2025-09-09_07-38-23/checkpoints/last.ckpt #data/resub/dit_30_20_512_sparse_cont/checkpoints/last.ckpt #data/resub/dit_30_20_384_sparse_cont/checkpoints/last.ckpt #data/resub/mm_30_20_384/checkpoints/last.ckpt #logs/train_video_memory_maze/['sparse']/runs/2025-08-30_08-48-32/checkpoints/last.ckpt
+      # old
+      #ckpt_path:  logs/train_video_memory_maze/['sparse']/runs/2025-09-10_11-06-46/checkpoints/last.ckpt #logs/train_video_memory_maze/['sparse']/runs/2025-09-09_14-55-42/checkpoints/last.ckpt #data/resub/dit_30_20_512_sparse_cont/checkpoints/last.ckpt #data/resub/dit_30_20_384_sparse_cont/checkpoints/last.ckpt #data/resub/mm_30_20_384/checkpoints/last.ckpt #logs/train_video_memory_maze/['sparse']/runs/2025-08-30_08-48-32/checkpoints/last.ckpt
+      # new
+      ckpt_path: logs/train_video_memory_maze/['sparse']/runs/2025-09-11_12-05-08/checkpoints/last.ckpt
+      max_tokens: 50
+      n_context: 33 #0 #3 #0
+      limit_stm_context: 0 #15 #5 #15 #32 #1 #33 #40 #10 #29 #15
+      model:
+        _partial_: true
+        _target_: src.models.components.backbones.dit.dit3d_base.DiT3D
+        hidden_size: 384 #512 #384 #512 #384 #512 #384 #512 #384 #512 #384 #512 #384 #768
+        patch_size: 4
+        pos_emb_type: rope_3d
+        depth: 12 #12
+        num_heads: 8 #8 #6 #8 #12
+        mlp_ratio: 4
+        use_gradient_checkpointing: False
+        use_fourier_noise_embedding: True
+        external_cond_dropout: 0.05
+        use_causal_mask: False #${model.use_causal_mask}
+        variant: full
+
+    adapter_model:
+      _target_: src.models.components.backbones.dit.dit3d_base.DiT3D
+      max_tokens: 20
+      x_shape: [4, 16, 16]
+      external_cond_dim: 8
+
+      hidden_size: 512
+      patch_size: 4
+      pos_emb_type: rope_3d
+      depth: 12
+      num_heads: 8
+      mlp_ratio: 4
+      use_gradient_checkpointing: False
+      use_fourier_noise_embedding: True
+      external_cond_dropout: 0.05
+      use_causal_mask: False
+      variant: full
+
+  diffusion_model:
+    _partial_: true
+    _target_: src.models.components.diffusion.continuous_diffusion_stm.ContinuousDiffusion #ContinuousDiffusion  # DiscreteDiffusion
+    model:
+      #_partial_: true
+      #_target_: src.models.components.backbones.unet.unet3d.Unet3D
+      #network_size: 48
+      #num_res_blocks: 3
+      #resnet_block_groups: 8
+      #dim_mults: [1, 2, 4, 8]
+      #attn_resolutions: [8, 16, 32, 64]
+      #attn_dim_head: 32
+      #attn_heads: 4
+      #use_linear_attn: True
+      #use_init_temporal_attn: True
+      #init_kernel_size: 7
+      #dropout: 0.0
+      #use_causal_mask: ${model.use_causal_mask}
+      #external_cond_dim: 5
+      #max_tokens: ${model.chunk_size}
+      #channels: [128, 256, 512, 1024]
+      #block_types: ["ResBlock", "ResBlock", "TransformerBlock", "TransformerBlock"]
+      #block_dropouts: [0.0, 0.0, 0.1, 0.1]
+      #num_updown_blocks: [3, 3, 6]
+      #use_checkpointing: [false, false, false, false]
+      _partial_: true
+      _target_: src.models.components.backbones.dit.dit3d_base.DiT3D
+      hidden_size: 512 #384 #512 #384 #512 #384 #512 #384 #512 #384 #768
+      patch_size: 2
+      pos_emb_type: rope_3d
+      depth: 12 #12
+      num_heads: 8 #8 #6 #8 #12
+      mlp_ratio: 4
+      use_gradient_checkpointing: False
+      use_fourier_noise_embedding: True
+      external_cond_dropout: 0.05
+      use_causal_mask: ${model.use_causal_mask}
+      variant: full
+      #mem: False #True
+    # ----------------- DISCRETE ----------------- #
+    #    timesteps: 1000 #${model.sampling_timesteps}
+    #sampling_timesteps: ${model.sampling_timesteps}
+    #beta_schedule: cosine #_simple_diffusion
+    ##schedule_fn_kwargs:
+    ##shifted: 0.125
+    #objective: pred_noise #pred_v
+    #loss_weighting:
+    #strategy: sigmoid #fused_min_snr #sigmoid #used_min_snr #sigmoid #sigmoid
+    ##snr_clip: 5
+    ##cum_snr_decay: 0.9
+    #sigmoid_bias: -1
+    #clip_noise: ${model.clip_noise}
+    #use_causal_mask: False
+    # ----------------- CONTINUOUS----------------- #
+    timesteps: 1000
+    use_causal_mask: ${model.use_causal_mask}
+    clip_noise: ${model.clip_noise}
+    objective: pred_v
+    beta_schedule: cosine_simple_diffusion
+    loss_weighting:
+      strategy: sigmoid #fused_min_snr #sigmoid
+      sigmoid_bias: -1
+    training_schedule: cosine
+    training_schedule_shift: 0.125
+    schedule_fn_kwargs:
+      shifted: 0.125
+    sampling_timesteps: ${model.sampling_timesteps}
+    precond_scale: 0.125 # true
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.0001
+    weight_decay: 0.001
+
+  lr_scheduler:
+    _target_: transformers.get_scheduler
+    _partial_: true
+    name: constant_with_warmup
+    num_warmup_steps: 10
+    num_training_steps: 500000
+
+callbacks:
+  ema:
+    enabled: false
+    decay: 0.9999
+    validate_original_weights: true
+
+  early_stopping:
+    monitor: "prediction/VideoMetricType.FID"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    save_top_k: 3
+    monitor: "prediction/VideoMetricType.FID"
+    mode: "min"
+
+logger:
+  wandb:
+    tags: ${tags}
+    project: memory_maze_resubmission
+    #id: vasew1je
+  #aim:
+  #  experiment: "ddpm_memory_maze"

@@ -1,0 +1,10 @@
+_target_: src.data.video.minecraft.minerl_processed.BasaltDataModule
+data_dir: /data/cvg/sebastian/minecraft_processed # ${paths.data_dir}
+seq_len: 25
+overlap: 0
+#skip_frames: 0
+height: 64
+width: 64
+batch_size: 2
+num_workers: 16
+pin_memory: False

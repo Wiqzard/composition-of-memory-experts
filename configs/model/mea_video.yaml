@@ -1,0 +1,154 @@
+_target_: src.models.mea_video.DiffusionModelTrainerMemoryAdaptation
+ckpt_path: 
+lora_finetune: False
+compile: 
+batch_size: ${data.batch_size}
+data_mean: ${data.dataset_cls.data_mean}
+data_std: ${data.dataset_cls.data_std}
+both_actions: ${data.dataset_cls.both_actions}
+
+# VAE Configuration
+is_latent_diffusion: False #True 
+is_latent_online: False #True 
+latent_downsampling_factor: ${data.dataset_cls.latent_downsampling_factor}
+latent_num_channels: 4
+vae_pretrained_path: 
+vae_use_fp16: True
+vae_batch_size: 1
+vae_time_chunk_size: 20
+vae_pretrained_kwargs: {}
+
+# Metrics Configuration
+metrics: [mse, psnr, ssim, fid, lpips, fvd] #[fvd, is, fid, lpips, mse, psnr, ssim, vbench]
+metrics_batch_size: 8
+exclude_context: true
+n_metrics_frames:
+
+# Checkpoint
+strict_load: False #True #False
+reset_optimizer: False
+
+# Logging Configuration
+log_grad_norm_freq: 100 #100 #${#trainer.log_every_n_steps}
+log_deterministic: False
+log_denoising: True
+log_sanity_generation: True #True #False
+log_max_num_videos: 32 #128 #64 #16 #32
+log_fps: 8
+
+# General Configuration
+x_shape: ${data.dataset_cls.observation_shape}
+n_frames: ${data.dataset_cls.n_frames} # Number of frames to be used for generating videos
+max_frames: ${data.dataset_cls.max_frames} # ... during training
+context_frames: 50 #105 # number of total context frames
+sliding_context_len: 1 # the amount context frames within attention window
+chunk_size: 10 #50  # limits the horizon if use_causal_mask is true
+# assert chunk_size <= max_frames - sliding_context_len
+use_causal_mask: False #True # for autoregressive prediction
+
+# horizon = max_frames - sliding_context_len
+
+adapter:
+  enabled: false #false #true #true #false #false #true
+  train_adapter: true #true #false #true
+  generate_unbatched: true
+  variant: full #lora #adapter # full, lora, adapter, classifier
+  n_ula: 0
+  spurious_retrieval: false
+  lora_r: 32 #62 #64 #16 #8 #32 #64 #32 #64 #128 #64 #128 #64 #32 #16
+  lora_alpha: 32 #62 #32 #8 #32 #64 #32 #64 #128 #64 #128 #64 #32 #16
+  num_memorization_steps: 200 #250 #50 #200 #500 #1200 #800 #2000 #1000 #800 #400 #200 #100 #50 #20
+  only_memorize_context: false #true
+  dropout: #0.7
+  memorization_strategy: random #sequential_last #random
+  memory_strength: 1.5 #1 #2.5 #2.5 #2.0
+  adapter_lr: 0.0001
+  ckpt_path: # only needed for adapter and if not trained with the adapter
+  lora_target_modules: [to_qkv, to_out, mlp.fc1, mlp.fc2] 
+
+fixed_context:
+  enabled: false
+  indices: null
+  dropout: 0.3
+
+variable_context:
+  enabled: false
+  prob: 0.5
+  dropout: 0.3
+
+causal_context:
+  enabled: false #false
+  indices: null
+  dropout: 0.1 #0.3
+
+sampling_timesteps: 50 
+cat_context_in_c_dim: False
+generate_in_noise_dim: False
+
+uniform_future: true
+noise_level: random_independent
+scheduling_matrix: full_sequence
+reconstruction_guidance: 0.0
+cfg_scale: 1.5
+clip_noise: 20
+
+# put these into data maybe?
+external_cond_processing: mask_first
+external_cond_dim: ${data.dataset_cls.external_cond_dim}
+external_cond_stack: ${data.dataset_cls.external_cond_stack}
+frame_skip: ${data.dataset_cls.frame_skip}
+
+# Tasks
+tasks: [prediction] #, interpolation]
+diffusion_model:
+  _partial_: true
+  _target_: src.models.components.diffusion.continuous_diffusion_v2.ContinuousDiffusion #ContinuousDiffusion  # DiscreteDiffusion
+  model: null 
+
+  # ----------------- DISCRETE ----------------- #
+  #    timesteps: 1000 #${model.sampling_timesteps}
+  #sampling_timesteps: ${model.sampling_timesteps}
+  #beta_schedule: cosine #_simple_diffusion
+  ##schedule_fn_kwargs:
+  ##shifted: 0.125
+  #objective: pred_noise #pred_v
+  #loss_weighting:
+  #strategy: sigmoid #fused_min_snr #sigmoid #used_min_snr #sigmoid #sigmoid
+  ##snr_clip: 5
+  ##cum_snr_decay: 0.9
+  #sigmoid_bias: -1
+  #clip_noise: ${model.clip_noise}
+  #use_causal_mask: False
+  # ----------------- CONTINUOUS----------------- #
+  timesteps: 1000
+  use_causal_mask: ${model.use_causal_mask}
+  clip_noise: ${model.clip_noise}
+  objective: pred_v
+  beta_schedule: cosine_simple_diffusion
+  loss_weighting:
+    strategy: sigmoid #fused_min_snr #sigmoid
+    sigmoid_bias: -1
+  training_schedule: cosine
+  training_schedule_shift: 0.125
+  schedule_fn_kwargs:
+    shifted: 0.125
+  sampling_timesteps: ${model.sampling_timesteps}
+  precond_scale: 0.125 # true
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.0001
+  weight_decay: 0.001
+
+lr_scheduler:
+  _target_: transformers.get_scheduler #get_constant_schedule_with_warmup
+  _partial_: true
+  name: constant_with_warmup
+  num_warmup_steps: 1000 #1000
+  num_training_steps: 500000
+  #_target_: torch.optim.lr_scheduler.LinearLR
+  #_partial_: true
+  #start_factor: 1
+  #end_factor: 0.1
+  #total_iters: ${trainer.max_epochs}

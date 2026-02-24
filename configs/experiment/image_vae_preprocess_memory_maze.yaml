@@ -1,0 +1,67 @@
+# @package _global_
+
+defaults:
+  #- override /callbacks: default
+  - override /trainer: ddp
+  - override /logger: wandb
+  - override /paths: default
+#  - override /model: overfit
+  - override /data: memory_maze
+  - override /model: preprocess 
+
+
+tags: ["image", "latent_precompute", "memory_maze"]
+
+seed: 42 
+test: False 
+train: False
+validate: True
+ckpt_path: null #logs/train/runs/2025-07-16_13-51-18/checkpoints/epoch_000-v2.ckpt #data/ckpts/ImageVAE_MCRAFT.ckpt
+
+trainer: 
+  strategy: auto #gpu #auto #ddp 
+  log_every_n_steps: 1
+  num_sanity_val_steps: 0
+  devices: 4
+  precision: 16-mixed
+
+data:
+  batch_size: 10 #16 #32 #12 #12 #10 #12 #32 #16
+  num_workers: 16
+  shuffle: True
+  overwrite_split: training #validation #training #validation #training
+  dataset_cls:
+    _target_: src.data.video.memory_maze_video_dataset.MemoryMazeSimpleVideoDataset
+    _partial_: True
+    #resolution: 128 #256
+    #observation_shape: [3, 128, 128]
+    #resolution: 256
+    #resolution: 256 #512 
+    #observation_shape: [3, 256, 256]
+    #save_dir: /data/cvg/sebastian/phyworld/debug
+    #save_dir: /data/cvg/sebastian/phyworld/combinatorial 
+    resolution: 64
+    latent_enable: True  #False  # Whether to use latents
+    latent_type: pre_sample  # Type of how latents are computed
+    latent_downsampling_factor: [1, 4]  # [temporal, spatial]
+    latent_suffix: 1cd9pgpb #_debug
+
+
+model: 
+  _target_: src.models.components.autoencoder.vae.image_vae.preprocessor.ImageVAEPreprocessor
+  pretrained_path: /home/ss24m050/Documents/phd_playground/data/ckpts/vae_memory_maze_9x9_[1,4].ckpt #logs/train/runs/2025-07-16_13-51-18/checkpoints/epoch_000-v2.ckpt ##data/ckpts/ImageVAE_MCRAFT.ckpt 
+  pretrained_kwargs: {}
+  precision: 16-mixed
+#  latent_type: ${data.latent.type}
+  max_encode_length: 250 #50 #10 #700 # number of frames that can be passed through the encoder at once
+  max_video_length: 50 #300 # 200 #50 #200 #300
+  every_n_batch: 500
+
+logger:
+  wandb:
+    project: "memory_maze_resub"
+    tags: ${tags}
+    group: "ddim_phiworld"
+
+  # src/train.py experiment=image_vae_preprocess_memory_maze
+  # src/eval.py experiment=image_vae_preprocess_memory_maze

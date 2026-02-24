@@ -1,0 +1,19 @@
+_target_: src.models.ddpm_video.DiffusionModelTrainer
+
+num_inference_steps: 10
+num_gen_steps: 1 
+
+
+
+scheduler:
+  _target_: diffusers.DDPMScheduler
+  num_train_timesteps: 1000
+  beta_schedule: linear
+  prediction_type: v_prediction 
+
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+

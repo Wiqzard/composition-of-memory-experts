@@ -1,0 +1,18 @@
+_target_: src.data.video_frames_datamodule.VideoFramesDataModule
+data_dir: ${paths.data_dir}
+batch_size: 128
+train_val_test_split: [7000, 2000, 1000]
+num_workers: 0
+pin_memory: False
+n_frames: 5
+skip_k: 2
+
+transform_cfg:
+  _target_: torchvision.transforms.Compose
+  transforms:
+    - _target_: torchvision.transforms.Resize
+      size: [128, 128]
+    - _target_: torchvision.transforms.ToTensor
+    - _target_: torchvision.transforms.Normalize
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]

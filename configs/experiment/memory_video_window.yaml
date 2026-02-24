@@ -1,0 +1,339 @@
+# @package _global_
+
+defaults:
+  - override /data: minecraft_marsh #memory_test
+  - override /model: ddpm_video
+  - override /callbacks: default
+  #- override /trainer: gpu
+  - override /trainer:  ddp 
+  - override /logger: wandb
+  - override /paths: default
+  #- override /debug: profiler #advanced #overfit
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["ddpm", "debug", "minecraft"]
+
+seed: 42 
+test: False
+
+
+trainer:
+  detect_anomaly: False #True #True
+  #strategy: ddp_find_unused_parameters_true
+#  devices: 1
+  inference_mode: False
+  
+  min_epochs: 10
+  #max_epochs: 1000
+  gradient_clip_val: 1 
+  val_check_interval: 900 
+  check_val_every_n_epoch:  #5
+  #limit_train_batches: 400
+  limit_val_batches: 4 #20
+  log_every_n_steps: 1
+  num_sanity_val_steps: 1
+  #overfit_batches: 1
+  precision: bf16 #bf16-mixed #fp32 #fp16
+  #profiler: "advanced"
+  max_epochs: 1
+  deterministic: False
+
+
+
+
+#paths:
+#  data_dir: /data/cvg/sebastian/memory_maze/memory-maze-9x9 
+ckpt_path: /home/ss24m050/Documents/phd_playground/logs/train/runs/2025-03-31_22-22-42/checkpoints/last.ckpt #/home/ss24m050/Documents/phd_playground/logs/train/runs/2025-03-31_11-24-47/checkpoints/last.ckpt # logs/train/runs/2025-02-21_22-04-15/checkpoints/last.ckpt  # null
+data:
+  batch_size: 2 #8 # 16 #64 #16 #8 #16 #32 #1 #32 #32 #64 
+  num_workers: 16
+  dataset_cls:
+    n_frames: 40 # total frames in prediction 
+    max_frames: 46 #10 #20 #50 # total frames in training 
+    save_dir: /data/cvg/sebastian/minecraft_marsh 
+    latent_enable: True  #False  # Whether to use latents
+    latent_type: pre_sample  # Type of how latents are computed
+    latent_suffix: 1cd9pgpb
+    latent_downsampling_factor: [1, 8]  # [temporal, spatial]
+    #overwrite_split: validation
+    #observation_shape: [4, 32, 32]
+
+model:
+  ckpt_path: #/home/ss24m050/Documents/phd_playground/data/ckpts/DFoT_MCRAFT.ckpt
+  lora_finetune: False 
+  compile:  true_without_ddp_optimizer # True
+  batch_size: ${data.batch_size}
+
+  data_mean: ${data.dataset_cls.data_mean} 
+  data_std: ${data.dataset_cls.data_mean} 
+
+  # VAE Configuration
+  is_latent_diffusion: True #False
+  is_latent_online: False #True #False
+  latent_downsampling_factor: ${data.dataset_cls.latent_downsampling_factor}
+  latent_num_channels: 4
+  vae_pretrained_path: data/ckpts/ImageVAE_MCRAFT.ckpt
+  vae_use_fp16: True
+  vae_batch_size: 1
+  vae_time_chunk_size: 20
+  vae_pretrained_kwargs: {}
+
+
+  # Metrics Configuration
+  metrics: [mse, psnr, ssim, fid, fvd] #[fvd, is, fid, lpips, mse, psnr, ssim, vbench]
+  metrics_batch_size: 8 
+  n_metrics_frames: #null # 50
+
+  # Checkpoint
+  strict_load: True #False
+  reset_optimizer: False
+
+  # Logging Configuration
+  log_grad_norm_freq: 100 #100 #${trainer.log_every_n_steps}
+  log_deterministic: False
+  log_sanity_generation: True #True #False
+  log_max_num_videos: 128 #64 #16 #32
+  log_fps: 6
+
+
+  # General Configuration
+  x_shape: ${data.dataset_cls.observation_shape}
+  n_frames: ${data.dataset_cls.n_frames} # Number of frames to be used for generating videos 
+  max_frames: ${data.dataset_cls.max_frames} # ... during training
+  context_frames: 10 #50  # number of total context frames 
+  sliding_context_len: 1 #25  # the amount context frames within attention window
+  chunk_size: 10 #50  # limits the horizon if use_causal_mask is true
+  # assert chunk_size <= max_frames - sliding_context_len
+  use_causal_mask: True # for autoregressive prediction
+
+  # horizon = max_frames - sliding_context_len
+
+  # Generation Configuration
+
+  memory:
+    enabled: true
+    memorize_context: false #true
+
+  fixed_context:
+    enabled: true #false
+    indices: null 
+    dropout: 0.0
+
+  variable_context:
+    enabled: false
+    prob: 0.0
+    dropout: 0.0
+  
+  uniform_future: false
+
+
+
+  sampling_timesteps: 20
+  cat_context_in_c_dim: False 
+  generate_in_noise_dim: False 
+
+  #clip_noise: 20 
+  noise_level: random_uniform # random_independent
+  scheduling_matrix: full_sequence
+  context_dropout: 0.0
+  reconstruction_guidance: 0.0
+  cfg_scale: 1.0 # no cfg scaling 
+
+
+  clip_noise: 20.0
+
+  # put these into data maybe?
+  external_cond_processing: mask_first #null 
+  external_cond_dim: ${data.dataset_cls.external_cond_dim}
+  external_cond_stack: True
+  frame_skip: ${data.dataset_cls.frame_skip}
+  
+  # Tasks
+  tasks: [prediction,] #, interpolation]
+  diffusion_model:
+    _partial_: true
+    _target_: src.models.components.diffusion.ContinuousDiffusion #DiscreteDiffusion #ContinuousDiffusion  # DiscreteDiffusion
+    model: 
+      _target_: insert_memory.MemoryDiT3D 
+      x_shape: [4, 32, 32 ] #${data.dataset_cls.observation_shape}
+      external_cond_dim: 8 #${model.external_cond_dim}
+      cat_conditioning: ${model.cat_context_in_c_dim}
+      max_tokens: ${model.chunk_size} # 50
+      hidden_size: 192 #768 # #384 #192 # 768
+      patch_size: 2
+      variant: full
+      pos_emb_type: rope_3d #sinusoidal_1d #learned_1d # rope_3d #learned_3d
+      depth: 12
+      num_heads: 12 #4 #4 # 12
+      mlp_ratio: 4
+      use_gradient_checkpointing: False
+      use_fourier_noise_embedding: True 
+      external_cond_dropout: 0.0 # 
+      learn_sigma: False
+      memory_layer_indices: [1, 5, 9]
+      memory_cfg:
+        _target_: insert_memory.TTTConfig
+        model_type: ttt
+        pre_conv: False
+        hidden_size: 192 #768 #mlp #!!!!!#!!!!!#!!!!!#!!!!!#!!!!!
+        ttt_layer_type: linear #mlp #!!!!!#!!!!!#!!!!!#!!!!!#!!!!!
+        num_attention_heads: 4
+        mini_batch_size: 256
+        use_gate: False
+        share_qk: False
+        use_cache: True
+        ttt_base_lr_init: 0.0001
+        ttt_base_lr_warmup: 10.0
+
+#        model_type: titans
+#        chunk_size: 256
+#        batch_size: 25
+#        depth_memory: 2
+#        heads: 1
+#        dim_head: #96
+#        memory_layer_indices: [1, 5, 9]
+#        momentum: False #True
+#        qkv_receives_diff_views: False
+#        max_grad_norm: 10
+
+
+#      _target_: insert_memory.MemoryMAC
+#      x_shape: [4, 32, 32]
+#      max_tokens: ${model.chunk_size}
+#      external_cond_dim: 8
+#      hidden_size: 384
+#      patch_size: 2
+#      variant: full
+#      pos_emb_type: learned_1d
+#      depth: 8
+#      num_heads: 4
+#      mlp_ratio: 4.0
+#      use_gradient_checkpointing: False
+#      use_fourier_noise_embedding: False
+#      external_cond_dropout: 0.0
+#      learn_sigma: False
+#      segment_len: 256
+#      num_longterm_mem_tokens: 256
+#      num_persist_mem_tokens: 256
+#      neural_memory_segment_len: 4
+#      neural_mem_gate_attn_output: False
+#      neural_memory_batch_size: 256
+#      neural_memory_qkv_receives_diff_views: False
+#      neural_mem_weight_residual: False
+#      dim_head: 64
+#      ff_mult: 4
+#      num_residual_streams: 4
+#      neural_memory_model: 
+#        _target_: titans.titans_pytorch.memory_models.MemoryMLP
+#        dim:  64
+#        depth: 2
+#      neural_memory_kwargs: 
+#        dim_head: 64
+#        heads: 4
+#        attn_pool_chunks: True
+#        qk_rmsnorm: True
+#        momentum: True
+#        momentum_order: 1
+#        default_step_transform_max_lr: 0.1
+#        use_accelerated_scan: False
+#        per_parameter_lr_modulation: True
+#      neural_memory_layers: [2, 4, 6]
+#      use_flex_attn: False #True
+#      sliding_window_attn: True
+    
+    timesteps: 1000
+    use_causal_mask: False #${model.use_causal_mask}
+    clip_noise: ${model.clip_noise}
+    objective: pred_v
+    beta_schedule: cosine_simple_diffusion
+    loss_weighting:
+      strategy: sigmoid #fused_min_snr #sigmoid
+      sigmoid_bias: -1
+    training_schedule: cosine 
+    training_schedule_shift: 0.125
+    schedule_fn_kwargs:
+      shifted: 0.125
+    sampling_timesteps: ${model.sampling_timesteps}
+    precond_scale: 0.125
+
+
+    #_target_: insert_memory.DiT3D #TTT #src.models.components.dit.DiT # _S_4
+    #in_channels: 6 #8
+    #out_channels: 3 #4
+    #input_size: 64 #16 #64
+    #num_classes: 1
+    #depth: 12 #12
+    #hidden_size: 192 #384 #192 #384
+    #num_heads: 6
+    #patch_size: 4
+    ## memory settings
+    #batch_size: 256 #32 #64 #128 # actual splitting
+    #chunk_size: 256 
+    #memory_cfg:
+    #_target_: titans.titans_pytorch.ttt_custom.TTTConfig
+      #pre_conv: False
+      #hidden_size: hidden_size
+      #ttt_layer_type="mlp"
+      #num_attention_heads=4
+      #mini_batch_size=256
+      ## rms_norm_eps=
+      ## conv_kernel=
+      ## mamba setting
+      #use_gate=False
+      #share_qk=False
+      #use_cache=True,  # enabling caching is optional
+
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.0001 #2 #0.0001
+    weight_decay: 0.001
+
+  lr_scheduler:
+    _target_: transformers.get_scheduler #get_constant_schedule_with_warmup
+    _partial_: true
+    name: constant_with_warmup
+    num_warmup_steps: 300
+    num_training_steps: 100000
+    #_target_: torch.optim.lr_scheduler.LinearLR
+    #_partial_: true
+    #start_factor: 1 
+    #end_factor: 0.1
+    #total_iters: ${trainer.max_epochs}
+
+callbacks:
+  ema:
+    enabled: true
+    decay: 0.9999
+    validate_original_weights: False #True
+    
+  early_stopping:
+    #monitor: "val/loss"
+    monitor: "prediction/VideoMetricType.MSE"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    #monitor: "train/outer_loss"
+    #monitor: "train/loss"
+    #monitor: "val/loss"
+    save_top_k: 3
+    monitor: "prediction/VideoMetricType.MSE"
+    mode: "min"
+  
+  learning_rate_monitor:
+    logging_interval: 'step' 
+    log_momentum: true
+    log_weight_decay: true
+  
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "ddpm_memory_maze"
+    id: vasew1je
+  #aim:
+  #  experiment: "ddpm_memory_maze"

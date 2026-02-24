@@ -1,0 +1,38 @@
+defaults:
+  - model_checkpoint
+  - early_stopping
+  - model_summary
+#  - rich_progress_bar
+  - learning_rate_monitor
+  - ema
+  - _self_
+
+model_checkpoint:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "epoch_{epoch:03d}"
+  monitor: "val/acc"
+  mode: "max"
+  save_last: True
+  auto_insert_metric_name: False
+
+early_stopping:
+  monitor: "val/acc"
+  patience: 100
+  mode: "max"
+
+model_summary:
+  max_depth: 1
+
+ema:
+  enabled: False
+  decay: 0.9990
+  validate_original_weights: False
+  every_n_steps: 1
+  cpu_offload: False
+  optimizer_indices: #  [0]
+
+
+learning_rate_monitor:
+  logging_interval: 'step' # 'step' or 'epoch'
+  log_momentum: True # whether to log the momentum
+  log_weight_decay: True # whether to log the weight decay

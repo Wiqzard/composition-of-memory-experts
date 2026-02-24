@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--<title>Compositional Long and Short Term Memories for Video Diffusion Models</title> -->
+  <title>Composition of Memory Experts for Diffusion World Models</title>
+  <meta name="description" content="ICLR 2026 submission — project page" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- ───── Custom experiment‑grid styles (slider / video thumbnails) ───── -->
+  <style>
+    /* Grid wrappers */
+    .experiment-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .experiment-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .gif-item {
+      text-align: center;
+    }
+
+    .gif-item img,
+    .gif-item video {
+      width: var(--thumb-size, 256px);
+      height: auto;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .gif-item p {
+      margin: 6px 0 0;
+      font-size: .85rem;
+      color: #555;
+    }
+
+    .sync-slider {
+      width: 10%;
+      margin: 8px auto 16px;
+      display: block;
+    }
+
+    /* Container styles */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .blog {
+      margin: 40px 0;
+    }
+
+    .extra-large {
+      max-width: 1400px;
+    }
+
+    .gray {
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      padding: 30px;
+      margin: 40px 0;
+    }
+
+    /* Experiment‑specific thumbnail sizes */
+    #cards-grid {
+      --thumb-size: 96px;
+    }
+
+    /* 48×48 ×4 */
+    #dmlab-grid,
+    #memorymaze-grid {
+      --thumb-size: 128px;
+    }
+
+    /* 64×64 ×3 */
+    #mc-grid,
+    #r10k-grid {
+      --thumb-size: 180px;
+    }
+
+    /* 256×256 upscaled */
+    /* Six videos per row for selected experiments */
+    #dmlab-grid .experiment-row,
+    #memorymaze-grid .experiment-row,
+    #cards-grid .experiment-row {
+      max-width: calc(var(--thumb-size) * 6 + 60px);
+      margin: 0 auto;
+      flex-wrap: nowrap;
+      justify-content: center;
+    }
+
+    #dmlab-grid .experiment-row .gif-item,
+    #memorymaze-grid .experiment-row .gif-item,
+    #cards-grid .experiment-row .gif-item {
+      flex: 0 0 var(--thumb-size);
+    }
+  </style>
+</head>
+
+<body class="font-sans text-gray-900 scroll-smooth">
+  <!-- ─────────────────────────── NAV ─────────────────────────── -->
+  <header class="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur border-b border-gray-200">
+    <div class="max-w-7xl mx-auto flex items-center justify-between px-4 py-2">
+      <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+        <a href="#abstract" class="hover:text-blue-600">Abstract</a>
+        <a href="#method" class="hover:text-blue-600">Method</a>
+        <a href="#experiments" class="hover:text-blue-600">Experiments</a>
+        <a href="#citation" class="hover:text-blue-600">Citation</a>
+      </nav>
+      <div class="hidden sm:flex items-center space-x-3">
+        <a href="https://arxiv.org/"
+          class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md px-4 py-2">Download
+          PDF</a>
+        <a href="https://github.com/"
+          class="bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-md px-4 py-2 flex items-center">
+          <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill-rule="evenodd"
+              d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              clip-rule="evenodd" />
+          </svg>
+          Code
+        </a>
+      </div>
+    </div>
+  </header>
+  <section class="relative pt-32 pb-24 bg-gradient-to-r from-[#041023] via-[#082236] to-[#003818] text-white">
+    <div class="max-w-4xl mx-auto text-center px-4">
+      <h1 class="text-4xl sm:text-6xl font-bold leading-tight mb-6">
+        <!-- Compositional Long and Short Term Memories for Video Diffusion Models -->
+        Composition of Memory Experts for Diffusion World Models
+      </h1>
+      <p class="text-lg mb-2">Anonymous Author(s)</p>
+     
+      <a href="#experiments"
+        class="inline-block bg-blue-600 hover:bg-blue-700 rounded-md px-8 py-3 text-lg font-medium">Visual Examples</a>
+    </div>
+  </section>
+  <section id="experiments" class="bg-gray-50 border-t border-gray-200 py-24">
+    <div class="max-w-7xl mx-auto px-4">
+      <h2 class="text-3xl font-bold text-center mb-12">Qualitative Results</h2>
+
+      <div class="bg-gray-50 rounded-xl shadow-sm mb-8">
+        <div class="container blog extra-large" id="exp-memorymaze">
+          <h2 class="text-2xl font-bold mb-4">MemoryMaze</h2>
+          <p style="text-align: left; margin: 0 0 20px 0; color: #555; font-size: 0.95rem;">
+            After memorizing a trajectory through the maze, and only given one context frame, the model generates frames
+            that accurately reflect the correct turns and re-entries. Using absolute position encoding, our method
+            preserves spatial consistency and successfully reconstructs complex navigation paths.
+          </p>
+          <div id="memorymaze-grid" class="experiment-grid"></div>
+        </div>
+      </div>
+
+      <div class="bg-gray-50 rounded-xl shadow-sm mb-8">
+        <div class="container blog extra-large" id="exp-r10k">
+          <h2 class="text-2xl font-bold mb-4">RealEstate10K</h2>
+          <p style="text-align: left; margin: 0 0 20px 0; color: #555; font-size: 0.95rem;">
+            Given 50 context frames, here highlighted with a blue border, we visualize the next 4 rollouts. Our method
+            produces coherent forward trajectories that reflect consistent agent movement and scene structure.
+          </p>
+          <div id="r10k-grid" class="experiment-grid"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm mb-8">
+        <div class="container blog extra-large" id="exp-dmlab">
+          <h2 class="text-2xl font-bold mb-4">DMLab</h2>
+          <p style="text-align: left; margin: 0 0 20px 0; color: #555; font-size: 0.95rem;">
+            Given 50 context frames, here highlighted with a blue border, we visualize the next 4 rollouts. Our method
+            produces coherent forward trajectories that reflect consistent agent movement and scene structure.
+          </p>
+          <div id="dmlab-grid" class="experiment-grid"></div>
+        </div>
+      </div>
+
+
+      <div class="bg-white rounded-xl shadow-sm mb-8">
+        <div class="container blog extra-large" id="exp-cards">
+          <h2 class="text-2xl font-bold mb-4">MemoryCards</h2>
+          <p style="text-align: left; margin: 0 0 20px 0; color: #555; font-size: 0.95rem;">
+            At the end of the sequence, the model is evaluated on its ability to regenerate occluded tiles. After being
+            shown a sequence of uncovering and covering actions, such that all tiles were visible at some point, our
+            method more accurately recalls the occluded tiles, here given as 'target', demonstrating effective discrete
+            memory recall.
+          </p>
+          <div id="cards-grid" class="experiment-grid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section id="citation" class="max-w-5xl mx-auto px-4 pt-24 pb-32">
+    <h2 class="text-3xl font-bold mb-6 text-center">Citation</h2>
+    <p class="text-gray-700 text-lg leading-relaxed mb-6 text-center">
+      If you find our work useful, please cite:
+    </p>
+    <pre class="bg-gray-100 rounded-lg p-6 overflow-x-auto text-sm"><code>@article{anonymous2026mema,
+
+  title   = {Composition of Memory Experts for Diffusion World Models},
+  author  = {Anonymous},
+  journal = {ICLR},
+  year    = {2026}
+}</code></pre>
+  </section>
+  <footer class="bg-gray-900 text-gray-400 py-12">
+    <div class="max-w-7xl mx-auto px-4 text-sm flex flex-col md:flex-row justify-between space-y-6 md:space-y-0">
+      <p>©
+        <script>document.write(new Date().getFullYear());</script> The Authors
+      </p>
+      <p class="italic">🎵 🎵</p>
+    </div>
+  </footer>
+
+  <!-- Removed: <script src="assets/scripts/navbar.js" defer></script> as it wasn't in the provided final HTML -->
+  <!-- ─────────────────────────── EXPERIMENT GRID JS ─────────────────────────── -->
+  <script defer>
+    const experiments = {
+      MemoryMaze: [
+        "4.mp4", "4_abs.mp4", "4_abs_mem.mp4", "7.mp4", "7_abs.mp4", "7_mem_abs.mp4", "8.mp4", "8_abs.mp4", "8_abs_mem.mp4", "10.mp4", "10_abs.mp4", "10_abs_mem.mp4", "11.mp4", "11_abs.mp4", "11_abs_mem.mp4", "12.mp4", "12_abs.mp4", "12_abs_mem.mp4", "13.mp4", "13_abs.mp4", "13_abs_mem.mp4", "14.mp4", "14_abs.mp4", "14_abs_mem.mp4"
+      ],
+      R10K: [
+        "1.mp4", "1_15_t.mp4", "1_15_v.mp4", "1_127.mp4", "1_127_mem.mp4", "2.mp4", "2_21.mp4", "2_21_mem.mp4", "2_38_t.mp4", "2_38_v.mp4", "3.mp4", "3_25.mp4", "3_25_mem.mp4", "3_42_t.mp4", "3_42_v.mp4", "4.mp4", "4_28_t.mp4", "4_28_v.mp4", "4_60.mp4", "4_60_mem.mp4"
+      ],
+      DMLab: [
+        "0.mp4", "0_mem.mp4", "0_no_mem.mp4", "18.mp4", "18_mem.mp4", "18_no_mem.mp4", "19.mp4", "19_mem.mp4", "19_no_mem.mp4", "27.mp4", "27_mem.mp4", "27_no_mem.mp4"
+      ],
+      Cards: [
+        "0.mp4", "0_mem.mp4", "0_no_mem.mp4", "1.mp4", "1_mem.mp4", "1_no_mem.mp4", "3.mp4", "3_mem.mp4", "3_no_mem.mp4", "4.mp4", "4_mem.mp4", "4_no_mem.mp4", "5.mp4", "5_mem.mp4", "5_no_mem.mp4", "6.mp4", "6_mem.mp4", "6_no_mem.mp4", "7.mp4", "7_mem.mp4", "7_no_mem.mp4", "8.mp4", "8_mem.mp4", "8_no_mem.mp4", "9.mp4", "9_mem.mp4", "9_no_mem.mp4"
+      ]
+    };
+
+    // Function to start all videos
+    const startAllVideos = () => {
+      document.querySelectorAll('video').forEach(video => {
+        // Ensure video is muted and has all necessary attributes
+        video.muted = true;
+        video.defaultMuted = true;
+        video.setAttribute('muted', '');
+        video.setAttribute('playsinline', '');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('loop', '');
+
+        // Try to play immediately
+        const playAttempt = () => {
+          video.play().catch(e => {
+            console.log('Play attempt failed:', e);
+            // Try again after a short delay
+            setTimeout(() => {
+              video.play().catch(e => console.log('Delayed play attempt failed:', e));
+            }, 100);
+          });
+        };
+
+        // Try to play when metadata is loaded
+        if (video.readyState >= 1) {
+          playAttempt();
+        } else {
+          video.addEventListener('loadedmetadata', playAttempt);
+        }
+      });
+    };
+
+    // Start videos when page loads
+    window.addEventListener('load', startAllVideos);
+    // Also try to start videos when DOM is ready
+    document.addEventListener('DOMContentLoaded', startAllVideos);
+
+    Object.entries(experiments).forEach(([exp, files]) => {
+      const grid = document.getElementById(exp.toLowerCase() + '-grid');
+      if (!grid) return;
+
+      const getVideoSortOrder = (filename) => {
+        if (/^\d+\.mp4$/.test(filename)) return 0; if (filename.includes('_mem')) return 1; if (filename.includes('_no_mem')) return 2; if (filename.includes('_t') || filename.includes('_v')) return 4; if (filename.includes('_')) return 3; return 5;
+      };
+      const getVideoCaption = (filename) => {
+        if (filename.includes('_t')) return 'DFoT-(HG-t)'; if (filename.includes('_v')) return 'DFoT-(HG-v)'; if (filename.includes('_no_mem')) return 'SD'; if (filename.includes('_mem')) return 'Ours'; if (filename.includes('_')) return 'SD'; if (/^\d+\.mp4$/.test(filename)) return 'Ground Truth'; return filename;
+      };
+      const getSliderColor = (exp, frameNum) => {
+        if (exp === 'MC' || exp === 'DMLab') return frameNum <= 182 ? '#2563eb' : '#1d4ed8'; return '#2563eb';
+      };
+      const updateVideoBorder = (video, exp, frameNum) => {
+        if (!video.borderOverlay) return; // Ensure borderOverlay exists
+        if ((exp === 'MC' || exp === 'DMLab') && frameNum <= 180) video.borderOverlay.style.display = 'block'; else video.borderOverlay.style.display = 'none';
+      };
+
+      const groups = {};
+      files.forEach(file => { const prefixMatch = file.match(/^\d+/); if (!prefixMatch) return; const prefix = prefixMatch[0]; (groups[prefix] = groups[prefix] || []).push(file); });
+
+      if (['DMLab', 'MemoryMaze', 'Cards', 'MC'].includes(exp)) {
+        const experimentGroups = []; const prefixes = Object.keys(groups).sort((a, b) => Number(a) - Number(b));
+        if (exp === 'Cards') { for (let i = 0; i < prefixes.length; i += 3) { const group = []; for (let j = 0; j < 3 && i + j < prefixes.length; j++) group.push(prefixes[i + j]); experimentGroups.push(group); } }
+        else { for (let i = 0; i < prefixes.length; i += 2) { if (i + 1 < prefixes.length) experimentGroups.push([prefixes[i], prefixes[i + 1]]); else experimentGroups.push([prefixes[i]]); } }
+
+        experimentGroups.forEach(group => {
+          const row = document.createElement('div'); row.className = 'experiment-row';
+          group.forEach(prefix => {
+            const groupContainer = document.createElement('div'); groupContainer.className = 'experiment-group'; groupContainer.style.cssText = 'display:flex; flex-direction:column; align-items:center; margin:0 10px;';
+            const videosContainer = document.createElement('div'); videosContainer.style.cssText = 'display:flex; gap:12px;';
+            groups[prefix].sort((a, b) => getVideoSortOrder(a) - getVideoSortOrder(b)).forEach(f => {
+              const item = document.createElement('div'); item.className = 'gif-item'; item.style.position = 'relative';
+              if (exp === 'Cards' && /^\d+\.mp4$/.test(f)) {
+                const canvas = document.createElement('canvas'); canvas.style.cssText = "width:var(--thumb-size); height:auto; border-radius:4px; border:4px solid #2563eb; box-sizing:border-box;";
+                const video = document.createElement('video'); video.src = `assets/visual_examples/${exp}/${f}`; video.style.display = 'none'; // Keep it hidden as it's for canvas
+                video.addEventListener('loadedmetadata', () => {
+                  if (video.duration && video.duration > (5 / 30)) { // Check duration
+                    video.currentTime = video.duration - (5 / 30);
+                  } else {
+                    video.currentTime = 0; // Fallback
+                  }
+                  video.addEventListener('seeked', () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); });
+                });
+                const caption = document.createElement('p'); caption.textContent = 'Target'; item.appendChild(canvas); item.appendChild(caption);
+              } else {
+                const video = document.createElement('video'); video.src = `assets/visual_examples/${exp}/${f}`;
+                video.setAttribute("playsinline", ""); video.setAttribute("autoplay", ""); video.setAttribute("muted", ""); video.setAttribute("loop", ""); video.setAttribute("preload", "auto");
+
+                video.addEventListener('loadedmetadata', () => {
+                  video.play().catch(e => { /* console.log('Initial autoplay failed (grouped):', e); */ });
+                });
+                // IntersectionObserver for robust autoplay
+                const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) video.play().catch(e => {/* console.log('Observer autoplay failed (grouped):', e); */ }); else video.pause(); }), { threshold: 0.1 });
+                observer.observe(video);
+
+                video.style.cssText = "width:var(--thumb-size); height:auto; border-radius:4px; position:relative;";
+                const borderOverlay = document.createElement('div'); borderOverlay.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #2563eb; border-radius:4px; pointer-events:none; display:none; box-sizing:border-box;';
+                const caption = document.createElement('p'); caption.textContent = getVideoCaption(f);
+                const videoWrapper = document.createElement('div'); videoWrapper.style.cssText = 'position:relative; display:inline-block;'; videoWrapper.appendChild(video); videoWrapper.appendChild(borderOverlay); item.appendChild(videoWrapper); item.appendChild(caption); video.borderOverlay = borderOverlay;
+              }
+              videosContainer.appendChild(item);
+            });
+            groupContainer.appendChild(videosContainer);
+            const sliderContainer = document.createElement('div'); sliderContainer.style.cssText = 'display:flex; align-items:center; justify-content:center; position:relative; width:calc(var(--thumb-size) * 1); margin:10px auto;';
+            const slider = document.createElement('input'); slider.type = 'range'; slider.min = 0; slider.step = 0.01; slider.value = 0; slider.className = 'sync-slider'; slider.style.cssText = 'width:100%; margin:0; display:block;';
+            const contextLabel = document.createElement('span'); contextLabel.textContent = 'context'; contextLabel.style.cssText = 'color:#2563eb; font-size:0.85rem; font-weight:normal; font-family:inherit; display:none; position:absolute; left:100%; margin-left:8px; white-space:nowrap;';
+            sliderContainer.appendChild(slider); sliderContainer.appendChild(contextLabel); groupContainer.appendChild(sliderContainer); row.appendChild(groupContainer);
+
+            const videos = videosContainer.querySelectorAll('video');
+
+            Promise.all([...videos].map(v => new Promise(res => {
+              if (v.readyState >= 1) res(); // HAVE_METADATA
+              else v.onloadedmetadata = res;
+            }))).then(() => {
+              if (videos.length === 0) return;
+              const durations = [...videos].map(v => v.duration).filter(d => !isNaN(d) && d > 0);
+              slider.max = durations.length > 0 ? Math.min(...durations) : 10; // Default 10s if no valid duration
+
+              // Ensure videos are playing initially (if not already handled by IntersectionObserver or autoplay attribute)
+              videos.forEach(v => {
+                if (v.paused) v.play().catch(e => { /* console.log('Play attempt after metadata (grouped):', e); */ });
+              });
+
+              slider.addEventListener('mousedown', () => {
+                videos.forEach(v => v.pause());
+              });
+
+              slider.addEventListener('input', () => {
+                const t = parseFloat(slider.value);
+                if (isNaN(t)) return;
+                videos.forEach(v => {
+                  if (Math.abs(v.currentTime - t) > 0.05) { // Threshold from example
+                    v.currentTime = t;
+                    // v.pause(); // Pause is already handled by mousedown, and input implies scrubbing.
+                    // The example has pause here, let's keep it for consistency
+                    if (!v.paused) v.pause();
+                  }
+                });
+                const frameNum = Math.floor(t * 30);
+                slider.style.accentColor = getSliderColor(exp, frameNum);
+                videos.forEach(v_upd => updateVideoBorder(v_upd, exp, frameNum)); // Use different var name
+                contextLabel.style.display = ((exp === 'MC' || exp === 'DMLab') && frameNum <= 182) ? 'inline' : 'none';
+              });
+
+              slider.addEventListener('mouseup', () => {
+                // The currentTime should be set by the last 'input' event.
+                // If it was just a click, 'input' might not have fired if value didn't change.
+                // So, ensure currentTime is set from slider before playing.
+                const t = parseFloat(slider.value);
+                if (isNaN(t)) return;
+                videos.forEach(v => {
+                  v.currentTime = t; // Ensure final position
+                  v.play().catch(e => { /* console.log('Play after mouseup failed (grouped):', e); */ });
+                });
+              });
+
+              const update = () => {
+                if (!slider.matches(':active') && videos.length > 0 && videos[0].readyState >= 1) {
+                  const firstVideoTime = videos[0].currentTime;
+                  if (!isNaN(firstVideoTime) && Math.abs(parseFloat(slider.value) - firstVideoTime) > 0.05) {
+                    slider.value = firstVideoTime;
+                  }
+                  const frameNum = Math.floor(firstVideoTime * 30);
+                  slider.style.accentColor = getSliderColor(exp, frameNum);
+                  videos.forEach(v_upd => updateVideoBorder(v_upd, exp, frameNum)); // Use different var name
+                  contextLabel.style.display = ((exp === 'MC' || exp === 'DMLab') && frameNum <= 182) ? 'inline' : 'none';
+                }
+                requestAnimationFrame(update);
+              };
+              if (videos.length > 0) update();
+            });
+          });
+          grid.appendChild(row);
+        });
+      } else { // Original handling for other experiments (e.g., R10K)
+        Object.keys(groups).sort((a, b) => { if (exp === 'R10K') { const order = ['2', '3', '1', '4']; return order.indexOf(a) - order.indexOf(b); } return Number(a) - Number(b); })
+          .forEach(prefix => {
+            const row = document.createElement('div'); row.className = 'experiment-row';
+            groups[prefix].sort((a, b) => getVideoSortOrder(a) - getVideoSortOrder(b)).forEach(f => {
+              const item = document.createElement('div'); item.className = 'gif-item'; item.style.position = 'relative';
+              const video = document.createElement('video'); video.src = `assets/visual_examples/${exp}/${f}`;
+              video.setAttribute("playsinline", ""); video.setAttribute("autoplay", ""); video.setAttribute("muted", ""); video.setAttribute("loop", ""); video.setAttribute("preload", "auto");
+
+              video.addEventListener('loadedmetadata', () => {
+                video.play().catch(e => { /* console.log('Initial autoplay failed (R10K):', e); */ });
+              });
+              // IntersectionObserver for robust autoplay
+              const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) video.play().catch(e => { /* console.log('Observer autoplay failed (R10K):', e); */ }); else video.pause(); }), { threshold: 0.1 });
+              observer.observe(video);
+
+              video.style.cssText = "width:var(--thumb-size); height:auto; border-radius:4px; position:relative;";
+              const borderOverlay = document.createElement('div'); borderOverlay.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #2563eb; border-radius:4px; pointer-events:none; display:none; box-sizing:border-box;';
+              const caption = document.createElement('p'); caption.textContent = getVideoCaption(f);
+              const videoWrapper = document.createElement('div'); videoWrapper.style.cssText = 'position:relative; display:inline-block;'; videoWrapper.appendChild(video); videoWrapper.appendChild(borderOverlay); item.appendChild(videoWrapper); item.appendChild(caption); video.borderOverlay = borderOverlay;
+              row.appendChild(item);
+            });
+            grid.appendChild(row);
+
+            const slider = document.createElement('input'); slider.type = 'range'; slider.min = 0; slider.step = 0.01; slider.value = 0; slider.className = 'sync-slider'; grid.appendChild(slider);
+
+            const videos = row.querySelectorAll('video');
+
+            Promise.all([...videos].map(v => new Promise(res => {
+              if (v.readyState >= 1) res(); // HAVE_METADATA
+              else v.onloadedmetadata = res;
+            }))).then(() => {
+              if (videos.length === 0) return;
+              const durations = [...videos].map(v => v.duration).filter(d => !isNaN(d) && d > 0);
+              slider.max = durations.length > 0 ? Math.min(...durations) : 10; // Default 10s
+
+              videos.forEach(v => {
+                if (v.paused) v.play().catch(e => { /* console.log('Play attempt after metadata (R10K):', e); */ });
+              });
+
+              slider.addEventListener('mousedown', () => {
+                videos.forEach(v => v.pause());
+              });
+
+              slider.addEventListener('input', () => {
+                const t = parseFloat(slider.value);
+                if (isNaN(t)) return;
+                videos.forEach(v => {
+                  if (Math.abs(v.currentTime - t) > 0.05) {
+                    v.currentTime = t;
+                    // v.pause(); // As per example
+                    if (!v.paused) v.pause();
+                  }
+                });
+                const frameNum = Math.floor(t * 30);
+                slider.style.accentColor = getSliderColor(exp, frameNum);
+                videos.forEach(v_upd => updateVideoBorder(v_upd, exp, frameNum));
+              });
+
+              slider.addEventListener('mouseup', () => {
+                const t = parseFloat(slider.value);
+                if (isNaN(t)) return;
+                videos.forEach(v => {
+                  v.currentTime = t; // Ensure final position
+                  v.play().catch(e => { /* console.log('Play after mouseup failed (R10K):', e); */ });
+                });
+              });
+
+              const update = () => {
+                if (!slider.matches(':active') && videos.length > 0 && videos[0].readyState >= 1) {
+                  const firstVideoTime = videos[0].currentTime;
+                  if (!isNaN(firstVideoTime) && Math.abs(parseFloat(slider.value) - firstVideoTime) > 0.05) {
+                    slider.value = firstVideoTime;
+                  }
+                  const frameNum = Math.floor(firstVideoTime * 30);
+                  slider.style.accentColor = getSliderColor(exp, frameNum);
+                  videos.forEach(v_upd => updateVideoBorder(v_upd, exp, frameNum));
+                }
+                requestAnimationFrame(update);
+              };
+              if (videos.length > 0) update();
+            });
+          });
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+_target_: src.data.h5_video_datamodule.H5VideoDataModule
+data_path: ${paths.data_dir}
+width: 1024
+height: 576
+skip_frames: 0
+frames_per_sample: 25
+num_steps: 10000
+aug: False # not yet implemented
+total_videos: -1
+batch_size: 2
+num_workers: 15
+pin_memory: False
+

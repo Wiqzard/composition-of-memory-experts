@@ -1,0 +1,30 @@
+_target_: src.data.datamodule_factory.DataModuleFactory
+batch_size: 16
+num_workers: 16
+pin_memory: False 
+shuffle: True
+dataset_cls:
+  _target_: src.data.video.minecraft_marsh.MinecraftAdvancedVideoDataset
+  _partial_: True
+
+  save_dir: /data/cvg/sebastian/minecraft_marsh/raw_data
+  latent_enable: True  #False  # Whether to use latents
+  latent_type: pre_sample  # Type of how latents are computed
+  latent_suffix: 1cd9pgpb
+  latent_downsampling_factor: [1, 8]  # [temporal, spatial]
+
+  n_frames: 2
+  filter_min_len: null
+  subdataset_size: null
+  max_frames: 10
+  frame_skip: 2
+  external_cond_stack: true
+  resolution: 256
+  observation_shape: [3, "${data.dataset_cls.resolution}", "${data.dataset_cls.resolution}"]
+
+  #data_mean: [[[0.5]], [[0.5]], [[0.5]]] #[[[0.557]], [[0.222]], [[0.416]], [[-0.847]]]
+  #data_std: [[[0.5]], [[0.5]], [[0.5]]]  #[[[4.268]], [[4.953]], [[5.722]], [[7.336]]]
+  data_mean: [[[0.557]], [[0.222]], [[0.416]], [[-0.847]]]
+  data_std: [[[4.268]], [[4.953]], [[5.722]], [[7.336]]]
+
+  external_cond_dim: 4

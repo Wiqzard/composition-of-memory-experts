@@ -1,0 +1,75 @@
+# @package _global_
+
+defaults:
+  - override /data: memory_maze 
+  - override /model: ddpm 
+  - override /callbacks: default
+  #- override /trainer: gpu 
+  - override /trainer:  ddp 
+  - override /logger: wandb
+  - override /paths: default
+#   - override /debug: overfit
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["ddpm", "debug", "memory_maze"]
+
+seed: 42 
+test: False
+
+
+trainer:
+  min_epochs: 10
+  max_epochs: 1000
+  gradient_clip_val: 1 
+  #val_check_interval: 100
+  check_val_every_n_epoch: 5
+  limit_val_batches: 2
+  
+
+  log_every_n_steps: 1
+  num_sanity_val_steps: 1
+  
+  #overfit_batches: 1
+  precision: bf16-mixed
+
+paths:
+  data_dir: /data/cvg/sebastian/memory_maze/memory-maze-9x9 
+  
+model:
+  num_inference_steps: 10
+  num_gen_steps: 15
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.0001
+
+  lr_scheduler:
+    _target_: torch.optim.lr_scheduler.LinearLR
+    _partial_: true
+    start_factor: 1 
+    end_factor: 0.1
+    total_iters: ${trainer.max_epochs}
+
+callbacks:
+  early_stopping:
+    monitor: "train/loss"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    monitor: "train/loss"
+    mode: "min"
+  
+data:
+  batch_size: 32 #32 #64 
+  num_workers: 16
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "ddpm_memory_maze"
+  aim:
+    experiment: "ddpm_memory_maze"

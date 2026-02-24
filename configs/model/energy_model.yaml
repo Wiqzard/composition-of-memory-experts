@@ -1,0 +1,33 @@
+
+_target_: src.models.ebm.EnergyBasedTrainer
+compile: false
+net:
+  _target_: src.models.components.mem_wm.energy_model.EnergyModel
+  #_target_: src.models.components.mem_wm.energy_model.EnergyModel3DResNet
+  input_size: 64
+  in_channels: 3
+  model_type: DiT-B/8
+  attention_mode: xformers
+  max_frames: 16
+
+scheduler:
+  #_target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  #_partial_: true
+  #monitor: train/loss
+  #mode: min
+  #factor: 0.1
+  #patience: 10
+  _target_: torch.optim.lr_scheduler.ExponentialLR 
+  _partial_: true
+  gamma: 0.99
+  
+  
+
+
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  #weight_decay: 0.0
+

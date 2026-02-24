@@ -1,0 +1,29 @@
+_target_: src.data.datamodule_factory.DataModuleFactory
+batch_size: 16
+num_workers: 16
+pin_memory: False 
+shuffle: True
+dataset_cls:
+  _target_: src.data.video.memory_cards_video_dataset.MemoryAdvancedVideoDataset
+  save_dir: /data/cvg/sebastian/memory_datasets_mp4/ #/data/cvg/sebastian/minecraft_simple 
+
+  latent_enable: False # Whether to use latents
+  latent_type: pre_sample # Type of how latents are computed
+  latent_suffix: 1cd9pgpb
+  latent_downsampling_factor: [1, 1] # [temporal, spatial] downsampling factor for latents
+
+  n_frames: 2 #17 #${dataset.max_frames} # Number of frames to be used for generating videos
+  filter_min_len: null # Only for validation. filters out validation videos shorter than this cfg. A null value defaults to self.n_frames, and filter by its value otherwise 
+  subdataset_size: null # A dataset is split into subdatasets of this size if not null
+  #num_eval_videos: null # Number of video clips to be used for evaluation, setting this ensures that evaluation clips are consistent across runs
+  max_frames: 10
+  frame_skip: 1
+  external_cond_stack: true
+  context_length: 1 
+  resolution: 48 #64 
+  observation_shape: [3, "${data.resolution}", "${data.resolution}"]
+
+  data_mean: [[[0.5]], [[0.5]], [[0.5]]] # [[[0.557]], [[0.222]], [[0.416]], [[-0.847]]]
+  data_std: [[[0.5]], [[0.5]], [[0.5]]]  #[[4.268]], [[4.953]], [[5.722]], [[7.336]]]
+  external_cond_dim: 5
+

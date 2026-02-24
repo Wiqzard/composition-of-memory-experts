@@ -1,0 +1,59 @@
+_target_: src.models.ddpm.DiffusionModelTrainer
+
+num_inference_steps: 10
+num_gen_steps: 10
+
+model:
+  _target_: src.models.components.transformer.video_model.VideoTransformer
+  attention_head_dim: 48
+  flip_sin_to_cos: True
+  freq_shift: 0
+  in_channels: 6 
+  max_text_seq_length: 1
+  num_attention_heads: 8
+  num_layers: 10
+  ofs_embed_dim: 
+  out_channels: 6
+  patch_bias: False
+  patch_size: 2
+  patch_size_t: 2
+  sample_frames: 17
+  sample_height: 64
+  sample_width: 64
+  spatial_interpolation_scale: 1.875
+  temporal_compression_ratio: 4
+  temporal_interpolation_scale: 1.0
+  text_embed_dim: 8
+  time_embed_dim: 512
+  timestep_activation_fn: silu
+  use_learned_positional_embeddings: False
+  use_rotary_positional_embeddings: True
+  disable_text: True
+  #_target_: src.models.components.dit.DiT # _S_4
+  #in_channels: 6 #8
+  #out_channels: 3 #4
+  #input_size: 64 #16 #64
+  #num_classes: 10
+  #depth: 12 #12
+  #hidden_size: 384 #192 #384
+  #num_heads: 6
+  #patch_size: 4
+  #autoencoder: 
+  #  _target_: src.models.components.autoencoder.simple_autoencoder.AutoEncoder
+  #  in_channels: 3
+  #  latent_dim: 4 
+  #  downsampling_factor: 4
+  #  hidden_size: 64 
+
+
+scheduler:
+  _target_: diffusers.DDPMScheduler
+  num_train_timesteps: 1000
+  beta_schedule: linear
+  prediction_type: v_prediction 
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+

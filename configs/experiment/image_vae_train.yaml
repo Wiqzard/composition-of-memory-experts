@@ -1,0 +1,119 @@
+# @package _global_
+defaults:
+  #- override /callbacks: default
+  - override /trainer: ddp #gpu
+  - override /logger: wandb
+  - override /paths: default
+#  - override /model: overfit
+  - override /data:  memory_maze #phyworld
+  #- override /model: preprocess 
+
+
+tags: ["image", "latent_train" ]
+
+seed: 422 
+test: False
+
+trainer: 
+  strategy: ddp_find_unused_parameters_true #auto #ddp 
+  devices: 4
+  limit_val_batches: 256 #32 #16 #2 #32 #8 #16
+  val_check_interval: 2000 #000 #000
+  log_every_n_steps: 1
+  num_sanity_val_steps: 0
+  precision: 16-mixed  #16-mixed #16-true
+
+data:
+  batch_size: 12 #12 #10 #12 #32 #16
+  num_workers: 16
+  dataset_cls:
+    absolute_action: false
+    #resolution: 128 #256
+    #observation_shape: [3, 128, 128]
+    #resolution: 256
+   # resolution: 256 #512 
+    n_frames: 1
+    max_frames: 1
+    #observation_shape: [3, 256, 256]
+    #save_dir: /data/cvg/sebastian/phyworld/debug
+   # save_dir: /data/cvg/sebastian/phyworld/combinatorial #debug
+
+model:
+                                           #  vae.image_vae.trainer
+  _target_: src.models.components.autoencoder.vae.image_vae.trainer.ImageVAETrainer
+  cfg:
+    #lr: 0.0001
+    lr: 0.0002 #4e-4
+    log_every_n_steps: 1
+    num_sanity_val_steps: 1
+    warmup_steps: 10000
+    gradient_clip_val: 1.0
+    embed_dim: 4
+    ckpt_path: # logs/train/runs/2025-07-16_13-51-18/checkpoints/epoch_000-v2.ckpt
+
+    lossconfig:
+      disc_start: 1001 #40001
+      kl_weight: 0.000001
+      disc_weight: 0.5
+
+    ddconfig:
+      double_z: true
+      z_channels: 4
+      resolution: ${data.dataset_cls.resolution}
+      in_channels: 3
+      out_ch: 3
+      ch: 128 #64 #32 #64 #128
+      ch_mult: [1, 2, 4, 4] #[1, 2, 4, 4]
+      num_res_blocks: 2
+      attn_resolutions: []
+      dropout: 0.0
+
+
+
+callbacks:
+  ema:
+    enabled: false #true
+    decay: 0.9999
+    validate_original_weights: true #False #True
+
+  early_stopping:
+    monitor: "val/fid"
+    #monitor: "prediction/VideoMetricType.FVD"
+    patience: 10000
+    mode: "min"
+
+  model_checkpoint:
+    #monitor: "train/outer_loss"
+    #monitor: "train/loss"
+    monitor: "val/fid"
+    save_top_k: 3
+    #monitor: "prediction/VideoMetricType.FVD"
+    mode: "min"
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00005 #1
+  weight_decay: 0.001
+
+  lr_scheduler:
+    _target_: transformers.get_scheduler #get_constant_schedule_with_warmup
+    _partial_: true
+    name: constant_with_warmup
+    num_warmup_steps: 2000 #1000
+    num_training_steps: 500000
+    #_target_: torch.optim.lr_scheduler.LinearLR
+    #_partial_: true
+    #start_factor: 1
+    #end_factor: 0.1
+    #total_iters: ${trainer.max_epochs}
+
+
+logger:
+  wandb:
+    project: "memory_maze_resub"
+    tags: ${tags}
+    group: "ddim_phiworld"
+    #id: vasew1je
+  #aim:
+  #  experiment: "ddpm_memory_maze"
